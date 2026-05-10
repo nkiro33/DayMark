@@ -12,7 +12,7 @@ void main() {
     });
 
     test('includes focused sample data for the MVP model set', () {
-      expect(data.categories, hasLength(5));
+      expect(data.categories, hasLength(6));
       expect(
         data.activities.map((activity) => activity.title),
         containsAll([
@@ -73,6 +73,103 @@ void main() {
       expect(summary.completedCount, 3);
       expect(summary.partialCount, 1);
       expect(summary.missedOrSkippedCount, 0);
+    });
+
+    test('logs a duration activity and updates the daily summary', () {
+      final before = data.getDailySummary(today);
+
+      final log = data.saveActivityLog(
+        activityId: 'activity-exercise',
+        date: today,
+        status: DailyLogStatus.partiallyCompleted,
+        durationMinutes: 30,
+      );
+      final after = data.getDailySummary(today);
+
+      expect(log.creditsEarned, 3);
+      expect(log.status, DailyLogStatus.partiallyCompleted);
+      expect(after.earnedCredits, before.earnedCredits + 3);
+      expect(after.partialCount, before.partialCount + 1);
+    });
+
+    test('replaces an existing activity log for the same date', () {
+      data.saveActivityLog(
+        activityId: 'activity-exercise',
+        date: today,
+        status: DailyLogStatus.partiallyCompleted,
+        durationMinutes: 30,
+      );
+      data.saveActivityLog(
+        activityId: 'activity-exercise',
+        date: today,
+        status: DailyLogStatus.completed,
+        durationMinutes: 60,
+      );
+
+      final exerciseLogs = data
+          .getLogsForDate(today)
+          .where((log) => log.activityId == 'activity-exercise');
+
+      expect(exerciseLogs, hasLength(1));
+      expect(exerciseLogs.single.status, DailyLogStatus.completed);
+      expect(exerciseLogs.single.creditsEarned, 5);
+    });
+
+    test('does not allow completing future activity logs', () {
+      final futureDate = today.add(const Duration(days: 1));
+
+      expect(
+        () => data.saveActivityLog(
+          activityId: 'activity-exercise',
+          date: futureDate,
+          status: DailyLogStatus.completed,
+          durationMinutes: 30,
+        ),
+        throwsArgumentError,
+      );
+
+      final futureLogs = data.getLogsForDate(futureDate);
+      expect(
+        futureLogs.every((log) => log.status == DailyLogStatus.planned),
+        isTrue,
+      );
+      expect(futureLogs.every((log) => log.creditsEarned == 0), isTrue);
+    });
+
+    test('creates one-time activities for today and future dates', () {
+      final futureDate = today.add(const Duration(days: 1));
+
+      final todayLog = data.createOneTimeActivity(
+        title: 'Clean desk',
+        date: today,
+      );
+      final futureLog = data.createOneTimeActivity(
+        title: 'Doctor appointment',
+        date: futureDate,
+      );
+
+      expect(todayLog.status, DailyLogStatus.completed);
+      expect(todayLog.creditsEarned, 1);
+      expect(futureLog.status, DailyLogStatus.planned);
+      expect(futureLog.creditsEarned, 0);
+      expect(
+        data
+            .getActivitiesForDate(futureDate)
+            .map((entry) => entry.activity.title),
+        contains('Doctor appointment'),
+      );
+    });
+
+    test('saves sleep check-ins and removes daily logs', () {
+      final checkIn = data.saveDailyCheckIn(date: today, sleepHours: 8);
+
+      data.removeActivityLog(activityId: 'activity-study', date: today);
+
+      expect(checkIn.sleepHours, 8);
+      expect(
+        data.getLogsForDate(today).map((log) => log.activityId),
+        isNot(contains('activity-study')),
+      );
     });
   });
 }

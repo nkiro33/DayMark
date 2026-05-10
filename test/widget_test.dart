@@ -48,4 +48,61 @@ void main() {
     expect(find.text('Planned'), findsWidgets);
     expect(find.text('Done'), findsNothing);
   });
+
+  testWidgets('logs an unlogged duration activity from the Daily screen', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const DaymarkApp());
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('activity-card-activity-exercise')),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -140));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.byKey(const ValueKey('log-action-activity-exercise')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('30 min'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Partial'), findsWidgets);
+    expect(find.text('3 credits'), findsOneWidget);
+  });
+
+  testWidgets('updates sleep and adds a one-time activity', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const DaymarkApp());
+
+    await tester.tap(find.text('Sleep: 7.5h'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('8 hours'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sleep: 8h'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('daily-primary-action')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Create one-time activity'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('one-time-title-field')),
+      'Call family',
+    );
+    await tester.tap(find.byKey(const ValueKey('save-one-time-activity')));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Call family'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.text('Call family'), findsOneWidget);
+  });
 }
