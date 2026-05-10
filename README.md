@@ -39,4 +39,8 @@ Implemented:
 
 ## License
 
-A license will be added from GitHub after the initial push.
+Copyright (c) 2026 Kirollos Hanna. All rights reserved.
+
+This project is publicly visible for portfolio and review purposes only.
+
+You may not copy, modify, distribute, publish, sublicense, sell, or use this code in another project without prior written permission.
