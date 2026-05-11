@@ -193,6 +193,8 @@ class MockDaymarkData {
       ),
     ];
 
+    activityOptions = [];
+
     dailyLogs = [
       DailyActivityLog(
         id: 'log-yesterday-make-bed',
@@ -296,7 +298,8 @@ class MockDaymarkData {
         id: 'check-in-today',
         userId: userId,
         date: this.today,
-        sleepHours: 7.5,
+        sleepMinutes: 450,
+        dayNote: 'A steady day.',
         createdAt: now,
         updatedAt: now,
       ),
@@ -311,6 +314,7 @@ class MockDaymarkData {
   late final List<ActivityTemplate> activities;
   late final List<ActivitySchedule> schedules;
   late final List<CreditRule> creditRules;
+  late final List<ActivityOption> activityOptions;
   late final List<DailyActivityLog> dailyLogs;
   late final List<DailyCheckIn> dailyCheckIns;
 
@@ -402,6 +406,15 @@ class MockDaymarkData {
     return categories
         .where((category) => category.id == activity.categoryId)
         .first;
+  }
+
+  List<ActivityOption> optionsForActivity(String activityId) {
+    final options =
+        activityOptions
+            .where((option) => option.activityId == activityId)
+            .toList()
+          ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return options;
   }
 
   List<ActivityTemplate> getLoggableActivitiesForDate(DateTime date) {
@@ -508,6 +521,16 @@ class MockDaymarkData {
   DailyActivityLog createOneTimeActivity({
     required String title,
     required DateTime date,
+    String? description,
+    String categoryId = 'category-personal',
+    ActivityType activityType = ActivityType.positive,
+    TrackingType trackingType = TrackingType.boolean,
+    double baseCredit = 1,
+    double creditPerMinute = 0,
+    double creditPerUnit = 0,
+    double? maxDailyCredit,
+    double penaltyCredit = 0,
+    List<ActivityOptionInput> categoricalOptions = const [],
   }) {
     final normalizedTitle = title.trim();
     if (normalizedTitle.isEmpty) {
@@ -520,11 +543,11 @@ class MockDaymarkData {
     final activity = ActivityTemplate(
       id: 'activity-one-time-$idSuffix',
       userId: userId,
-      categoryId: 'category-personal',
+      categoryId: categoryId,
       title: normalizedTitle,
-      description: 'One-time activity for ${_dateKey(target)}.',
-      activityType: ActivityType.positive,
-      trackingType: TrackingType.boolean,
+      description: description ?? 'One-time activity for ${_dateKey(target)}.',
+      activityType: activityType,
+      trackingType: trackingType,
       activityScope: ActivityScope.oneTime,
       createdAt: now,
       updatedAt: now,
@@ -534,28 +557,120 @@ class MockDaymarkData {
       CreditRule(
         id: 'credit-one-time-$idSuffix',
         activityId: activity.id,
-        baseCredit: 1,
+        baseCredit: baseCredit,
+        creditPerMinute: _defaultCreditPerMinute(trackingType, creditPerMinute),
+        creditPerUnit: _defaultCreditPerUnit(trackingType, creditPerUnit),
+        maxDailyCredit: maxDailyCredit,
+        penaltyCredit: penaltyCredit,
       ),
+    );
+    _addCategoricalOptions(
+      activity: activity,
+      idSuffix: idSuffix,
+      options: categoricalOptions,
+      now: now,
     );
 
     return saveActivityLog(
       activityId: activity.id,
       date: target,
-      status: _isFutureDate(target)
+      status: _isFutureDate(target) || !_canCompleteImmediately(trackingType)
           ? DailyLogStatus.planned
           : DailyLogStatus.completed,
     );
   }
 
+  ActivityTemplate createRecurringActivity({
+    required String title,
+    required DateTime startDate,
+    String? description,
+    String categoryId = 'category-personal',
+    ActivityType activityType = ActivityType.positive,
+    TrackingType trackingType = TrackingType.boolean,
+    ScheduleFrequency frequency = ScheduleFrequency.daily,
+    List<int> daysOfWeek = const [],
+    int? expectedDurationMinutes,
+    double baseCredit = 1,
+    double creditPerMinute = 0,
+    double creditPerUnit = 0,
+    double? maxDailyCredit,
+    double penaltyCredit = 0,
+    List<ActivityOptionInput> categoricalOptions = const [],
+  }) {
+    final normalizedTitle = title.trim();
+    if (normalizedTitle.isEmpty) {
+      throw ArgumentError.value(title, 'title', 'Title cannot be empty');
+    }
+
+    final target = _dateOnly(startDate);
+    final now = DateTime.now();
+    final idSuffix = '${_dateKey(target)}-${activities.length + 1}';
+    final activity = ActivityTemplate(
+      id: 'activity-recurring-$idSuffix',
+      userId: userId,
+      categoryId: categoryId,
+      title: normalizedTitle,
+      description: description ?? 'Recurring activity.',
+      activityType: activityType,
+      trackingType: trackingType,
+      activityScope: ActivityScope.recurring,
+      startDate: target,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    activities.add(activity);
+    schedules.add(
+      ActivitySchedule(
+        id: 'schedule-recurring-$idSuffix',
+        activityId: activity.id,
+        frequency: frequency,
+        daysOfWeek: daysOfWeek,
+        expectedDurationMinutes: expectedDurationMinutes,
+      ),
+    );
+    creditRules.add(
+      CreditRule(
+        id: 'credit-recurring-$idSuffix',
+        activityId: activity.id,
+        baseCredit: baseCredit,
+        creditPerMinute: _defaultCreditPerMinute(trackingType, creditPerMinute),
+        creditPerUnit: _defaultCreditPerUnit(trackingType, creditPerUnit),
+        maxDailyCredit: maxDailyCredit,
+        penaltyCredit: penaltyCredit,
+      ),
+    );
+    _addCategoricalOptions(
+      activity: activity,
+      idSuffix: idSuffix,
+      options: categoricalOptions,
+      now: now,
+    );
+
+    if (_isFutureDate(target)) {
+      planActivity(activityId: activity.id, date: target);
+    }
+
+    return activity;
+  }
+
+  int? expectedDurationForActivity(String activityId) {
+    return schedules
+        .where((schedule) => schedule.activityId == activityId)
+        .firstOrNull
+        ?.expectedDurationMinutes;
+  }
+
   DailyCheckIn saveDailyCheckIn({
     required DateTime date,
-    required double? sleepHours,
+    required int? sleepMinutes,
+    String? dayNote,
   }) {
-    if (sleepHours != null && (sleepHours < 0 || sleepHours > 24)) {
+    if (sleepMinutes != null && (sleepMinutes < 0 || sleepMinutes > 1440)) {
       throw ArgumentError.value(
-        sleepHours,
-        'sleepHours',
-        'Sleep hours must be between 0 and 24',
+        sleepMinutes,
+        'sleepMinutes',
+        'Sleep minutes must be between 0 and 1440',
       );
     }
 
@@ -569,7 +684,8 @@ class MockDaymarkData {
       id: existing?.id ?? 'check-in-${_dateKey(target)}',
       userId: userId,
       date: target,
-      sleepHours: sleepHours,
+      sleepMinutes: sleepMinutes,
+      dayNote: dayNote,
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     );
@@ -601,16 +717,85 @@ class MockDaymarkData {
     }
 
     final credit = switch (activity.trackingType) {
-      TrackingType.boolean || TrackingType.milestone => rule.baseCredit,
+      TrackingType.boolean ||
+      TrackingType.milestone => _simpleCompletionCredits(
+        activity: activity,
+        rule: rule,
+        status: status,
+      ),
       TrackingType.duration => rule.creditPerMinute * (durationMinutes ?? 0),
       TrackingType.quantity => rule.creditPerUnit * (value ?? 0),
       TrackingType.level => _levelCredits(activity, rule, value),
+      TrackingType.categorical => _categoricalCredits(activity.id, value),
     };
 
     return _capDailyCredit(credit, rule.maxDailyCredit);
   }
 
+  double _categoricalCredits(String activityId, double? value) {
+    if (value == null) {
+      return 0;
+    }
+
+    return optionsForActivity(
+          activityId,
+        ).where((option) => option.value == value).firstOrNull?.creditValue ??
+        0;
+  }
+
+  void _addCategoricalOptions({
+    required ActivityTemplate activity,
+    required String idSuffix,
+    required List<ActivityOptionInput> options,
+    required DateTime now,
+  }) {
+    if (activity.trackingType != TrackingType.categorical) {
+      return;
+    }
+
+    final normalizedOptions = options
+        .where((option) => option.label.trim().isNotEmpty)
+        .toList();
+    final effectiveOptions = normalizedOptions.isEmpty
+        ? const [
+            ActivityOptionInput(label: 'Too little', value: 1, creditValue: 0),
+            ActivityOptionInput(label: 'Normal', value: 2, creditValue: 1),
+            ActivityOptionInput(label: 'Too much', value: 3, creditValue: 0),
+          ]
+        : normalizedOptions;
+
+    for (final indexedOption in effectiveOptions.indexed) {
+      final index = indexedOption.$1;
+      final option = indexedOption.$2;
+      activityOptions.add(
+        ActivityOption(
+          id: 'option-$idSuffix-${index + 1}',
+          activityId: activity.id,
+          label: option.label.trim(),
+          value: option.value,
+          creditValue: option.creditValue,
+          sortOrder: index,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+    }
+  }
+
   bool _isScheduledForDate(String activityId, DateTime date) {
+    final activity = _activityById(activityId);
+    if (activity == null) {
+      return false;
+    }
+    if (activity.startDate != null &&
+        date.isBefore(_dateOnly(activity.startDate!))) {
+      return false;
+    }
+    if (activity.endDate != null &&
+        date.isAfter(_dateOnly(activity.endDate!))) {
+      return false;
+    }
+
     final schedule = schedules
         .where((item) => item.activityId == activityId)
         .firstOrNull;
@@ -640,6 +825,12 @@ class MockDaymarkData {
     final rule = _creditRuleForActivity(activityId);
     if (rule == null) {
       return 0;
+    }
+    final categoricalCredits = optionsForActivity(
+      activityId,
+    ).map((option) => option.creditValue);
+    if (categoricalCredits.isNotEmpty) {
+      return categoricalCredits.reduce((a, b) => a > b ? a : b);
     }
     if (rule.baseCredit > 0) {
       return rule.baseCredit;
@@ -675,12 +866,30 @@ double _levelCredits(
   if (activity.activityType != ActivityType.negative) {
     return rule.baseCredit;
   }
+  final penaltyCredit = rule.penaltyCredit == 0
+      ? -rule.baseCredit.abs()
+      : rule.penaltyCredit;
 
   return switch ((value ?? 1).round()) {
     <= 1 => rule.baseCredit,
-    2 => rule.penaltyCredit / 2,
-    _ => rule.penaltyCredit,
+    2 => penaltyCredit / 2,
+    _ => penaltyCredit,
   };
+}
+
+double _simpleCompletionCredits({
+  required ActivityTemplate activity,
+  required CreditRule rule,
+  required DailyLogStatus status,
+}) {
+  if (activity.activityType == ActivityType.negative) {
+    return status == DailyLogStatus.completed
+        ? rule.baseCredit
+        : rule.penaltyCredit == 0
+        ? -rule.baseCredit.abs()
+        : rule.penaltyCredit;
+  }
+  return status == DailyLogStatus.completed ? rule.baseCredit : 0;
 }
 
 double _capDailyCredit(double credit, double? maxDailyCredit) {
@@ -688,6 +897,25 @@ double _capDailyCredit(double credit, double? maxDailyCredit) {
     return credit;
   }
   return credit > maxDailyCredit ? maxDailyCredit : credit;
+}
+
+double _defaultCreditPerMinute(TrackingType trackingType, double value) {
+  if (trackingType == TrackingType.duration && value == 0) {
+    return 0.1;
+  }
+  return value;
+}
+
+double _defaultCreditPerUnit(TrackingType trackingType, double value) {
+  if (trackingType == TrackingType.quantity && value == 0) {
+    return 1;
+  }
+  return value;
+}
+
+bool _canCompleteImmediately(TrackingType trackingType) {
+  return trackingType == TrackingType.boolean ||
+      trackingType == TrackingType.milestone;
 }
 
 String _dateKey(DateTime date) {

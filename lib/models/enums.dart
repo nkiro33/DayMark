@@ -1,6 +1,6 @@
 enum ActivityType { positive, negative, neutral }
 
-enum TrackingType { boolean, duration, quantity, level, milestone }
+enum TrackingType { boolean, duration, quantity, level, milestone, categorical }
 
 enum ActivityScope { recurring, manual, oneTime }
 

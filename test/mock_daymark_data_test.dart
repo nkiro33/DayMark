@@ -25,7 +25,7 @@ void main() {
       );
       expect(data.schedules, hasLength(data.activities.length));
       expect(data.creditRules, hasLength(data.activities.length));
-      expect(data.dailyCheckIns.single.sleepHours, 7.5);
+      expect(data.dailyCheckIns.single.sleepMinutes, 450);
     });
 
     test('returns logs for today, yesterday, and a future date', () {
@@ -160,12 +160,142 @@ void main() {
       );
     });
 
+    test('creates recurring activities starting on the selected date', () {
+      final futureDate = today.add(const Duration(days: 1));
+
+      final todayActivity = data.createRecurringActivity(
+        title: 'Read',
+        startDate: today,
+      );
+      final futureActivity = data.createRecurringActivity(
+        title: 'Water plants',
+        startDate: futureDate,
+      );
+
+      expect(todayActivity.activityScope, ActivityScope.recurring);
+      expect(futureActivity.activityScope, ActivityScope.recurring);
+      expect(
+        data.getActivitiesForDate(today).map((entry) => entry.activity.title),
+        contains('Read'),
+      );
+      expect(
+        data.getActivitiesForDate(today).map((entry) => entry.activity.title),
+        isNot(contains('Water plants')),
+      );
+      expect(
+        data
+            .getActivitiesForDate(futureDate)
+            .map((entry) => entry.activity.title),
+        contains('Water plants'),
+      );
+      expect(
+        data
+            .getLogForActivityDate(
+              activityId: futureActivity.id,
+              date: futureDate,
+            )
+            ?.status,
+        DailyLogStatus.planned,
+      );
+    });
+
+    test('writes custom activity form details into models', () {
+      final activity = data.createRecurringActivity(
+        title: 'Practice guitar',
+        startDate: today,
+        description: 'Keep a small music practice rhythm.',
+        categoryId: 'category-personal',
+        activityType: ActivityType.positive,
+        trackingType: TrackingType.duration,
+        frequency: ScheduleFrequency.weekly,
+        daysOfWeek: const [1, 3, 5],
+        expectedDurationMinutes: 20,
+        creditPerMinute: 0.2,
+        maxDailyCredit: 6,
+      );
+
+      final schedule = data.schedules.singleWhere(
+        (item) => item.activityId == activity.id,
+      );
+      final creditRule = data.creditRules.singleWhere(
+        (item) => item.activityId == activity.id,
+      );
+
+      expect(activity.description, 'Keep a small music practice rhythm.');
+      expect(activity.trackingType, TrackingType.duration);
+      expect(schedule.frequency, ScheduleFrequency.weekly);
+      expect(schedule.daysOfWeek, [1, 3, 5]);
+      expect(schedule.expectedDurationMinutes, 20);
+      expect(creditRule.creditPerMinute, 0.2);
+      expect(creditRule.maxDailyCredit, 6);
+    });
+
+    test('stores categorical options and logs the selected option value', () {
+      final activity = data.createRecurringActivity(
+        title: 'Screen time balance',
+        startDate: today,
+        trackingType: TrackingType.categorical,
+        categoricalOptions: const [
+          ActivityOptionInput(label: 'Too little', value: 1, creditValue: 0),
+          ActivityOptionInput(label: 'Normal', value: 2, creditValue: 2),
+          ActivityOptionInput(label: 'Too much', value: 3, creditValue: -2),
+        ],
+      );
+
+      final log = data.saveActivityLog(
+        activityId: activity.id,
+        date: today,
+        status: DailyLogStatus.completed,
+        value: 2,
+      );
+
+      expect(
+        data.optionsForActivity(activity.id).map((option) => option.label),
+        ['Too little', 'Normal', 'Too much'],
+      );
+      expect(log.value, 2);
+      expect(log.creditsEarned, 2);
+    });
+
+    test(
+      'treats not doing a bad habit as positive and doing it as negative',
+      () {
+        final activity = data.createRecurringActivity(
+          title: 'Avoid late scrolling',
+          startDate: today,
+          categoryId: 'category-bad-habit',
+          activityType: ActivityType.negative,
+          trackingType: TrackingType.boolean,
+          baseCredit: 1,
+        );
+
+        final avoidedLog = data.saveActivityLog(
+          activityId: activity.id,
+          date: today,
+          status: DailyLogStatus.completed,
+        );
+        final happenedLog = data.saveActivityLog(
+          activityId: activity.id,
+          date: today,
+          status: DailyLogStatus.missed,
+        );
+
+        expect(avoidedLog.creditsEarned, greaterThan(0));
+        expect(happenedLog.creditsEarned, lessThan(0));
+      },
+    );
+
     test('saves sleep check-ins and removes daily logs', () {
-      final checkIn = data.saveDailyCheckIn(date: today, sleepHours: 8);
+      final checkIn = data.saveDailyCheckIn(
+        date: today,
+        sleepMinutes: 480,
+        dayNote: 'Slept well.',
+      );
 
       data.removeActivityLog(activityId: 'activity-study', date: today);
 
-      expect(checkIn.sleepHours, 8);
+      expect(checkIn.sleepMinutes, 480);
+      expect(checkIn.dayNote, 'Slept well.');
       expect(
         data.getLogsForDate(today).map((log) => log.activityId),
         isNot(contains('activity-study')),

@@ -12,7 +12,7 @@ class WeeklySummary {
     this.completedCount = 0,
     this.missedCount = 0,
     this.partialCount = 0,
-    this.averageSleepHours,
+    this.averageSleepMinutes,
     this.scoreChangeFromPreviousWeek = 0,
     this.changeType = WeeklyChangeType.normal,
     this.reflectionRequested = false,
@@ -30,7 +30,7 @@ class WeeklySummary {
   final int completedCount;
   final int missedCount;
   final int partialCount;
-  final double? averageSleepHours;
+  final double? averageSleepMinutes;
   final double scoreChangeFromPreviousWeek;
   final WeeklyChangeType changeType;
   final bool reflectionRequested;
@@ -49,7 +49,7 @@ class WeeklySummary {
       'completed_count': completedCount,
       'missed_count': missedCount,
       'partial_count': partialCount,
-      'average_sleep_hours': averageSleepHours,
+      'average_sleep_minutes': averageSleepMinutes,
       'score_change_from_previous_week': scoreChangeFromPreviousWeek,
       'change_type': changeType.jsonName,
       'reflection_requested': reflectionRequested,
@@ -70,7 +70,7 @@ class WeeklySummary {
       completedCount: json['completed_count']! as int,
       missedCount: json['missed_count']! as int,
       partialCount: json['partial_count']! as int,
-      averageSleepHours: (json['average_sleep_hours'] as num?)?.toDouble(),
+      averageSleepMinutes: _parseAverageSleepMinutes(json),
       scoreChangeFromPreviousWeek:
           (json['score_change_from_previous_week']! as num).toDouble(),
       changeType: enumFromJsonName(
@@ -82,4 +82,14 @@ class WeeklySummary {
       updatedAt: DateTime.parse(json['updated_at']! as String),
     );
   }
+}
+
+double? _parseAverageSleepMinutes(Map<String, Object?> json) {
+  final minutes = json['average_sleep_minutes'] as num?;
+  if (minutes != null) {
+    return minutes.toDouble();
+  }
+
+  final legacyHours = json['average_sleep_hours'] as num?;
+  return legacyHours == null ? null : legacyHours.toDouble() * 60;
 }

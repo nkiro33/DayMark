@@ -1,4 +1,5 @@
 export 'activity_category.dart';
+export 'activity_option.dart';
 export 'activity_schedule.dart';
 export 'activity_template.dart';
 export 'credit_rule.dart';
