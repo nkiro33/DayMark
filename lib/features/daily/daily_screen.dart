@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/daymark_settings.dart';
 import '../../data/mock_daymark_data.dart';
 import '../../models/models.dart';
 import 'activity_form_result.dart';
@@ -20,16 +21,28 @@ import 'widgets/numeric_log_sheet.dart';
 import 'widgets/sleep_input_card.dart';
 
 class DailyScreen extends StatefulWidget {
-  const DailyScreen({super.key});
+  const DailyScreen({super.key, this.data, this.settings});
+
+  final MockDaymarkData? data;
+  final DaymarkSettings? settings;
 
   @override
   State<DailyScreen> createState() => _DailyScreenState();
 }
 
 class _DailyScreenState extends State<DailyScreen> {
-  final MockDaymarkData _data = MockDaymarkData();
-  late DateTime _selectedDate = _data.today;
+  late final MockDaymarkData _data;
+  late final DaymarkSettings _settings;
+  late DateTime _selectedDate;
   DailyFilter _selectedFilter = DailyFilter.all;
+
+  @override
+  void initState() {
+    super.initState();
+    _data = widget.data ?? MockDaymarkData();
+    _settings = widget.settings ?? DaymarkSettings();
+    _selectedDate = _data.today;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +62,10 @@ class _DailyScreenState extends State<DailyScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          DailySummaryCard(summary: summary),
+          DailySummaryCard(
+            summary: summary,
+            showDailyScore: _settings.showDailyScore,
+          ),
           const SizedBox(height: 16),
           HorizontalDaySelector(
             today: _data.today,
@@ -88,6 +104,7 @@ class _DailyScreenState extends State<DailyScreen> {
                 entry: entry,
                 category: _data.categoryForActivity(entry.activity),
                 isFutureDate: isFutureDate,
+                showScore: _settings.showDailyScore,
                 onLogAction: _logActivityEntry,
                 onReview: () => _showActivityDetails(entry),
               ),
@@ -308,7 +325,7 @@ class _DailyScreenState extends State<DailyScreen> {
         title: result.title,
         date: _selectedDate,
         description: result.description,
-        categoryId: result.categoryId,
+        categoryId: _categoryIdForResult(result),
         activityType: result.activityType,
         trackingType: result.trackingType,
         baseCredit: result.baseCredit,
@@ -330,7 +347,7 @@ class _DailyScreenState extends State<DailyScreen> {
         title: result.title,
         startDate: _selectedDate,
         description: result.description,
-        categoryId: result.categoryId,
+        categoryId: _categoryIdForResult(result),
         activityType: result.activityType,
         trackingType: result.trackingType,
         frequency: result.frequency,
@@ -354,6 +371,13 @@ class _DailyScreenState extends State<DailyScreen> {
     Navigator.of(context).pop();
     _showMessage(
       isFutureDate ? '${result.title} planned.' : '${result.title} added.',
+    );
+  }
+
+  String _categoryIdForResult(ActivityFormResult result) {
+    return _data.resolveCategoryId(
+      categoryId: result.categoryId,
+      customCategoryName: result.customCategoryName,
     );
   }
 

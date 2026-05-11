@@ -12,6 +12,7 @@ class DailyActivityCard extends StatelessWidget {
     required this.entry,
     required this.category,
     required this.isFutureDate,
+    required this.showScore,
     required this.onLogAction,
     required this.onReview,
   });
@@ -19,6 +20,7 @@ class DailyActivityCard extends StatelessWidget {
   final DailyActivityEntry entry;
   final ActivityCategory category;
   final bool isFutureDate;
+  final bool showScore;
   final ValueChanged<DailyActivityEntry> onLogAction;
   final VoidCallback onReview;
 
@@ -60,13 +62,15 @@ class DailyActivityCard extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              Icon(
-                Icons.toll_outlined,
-                size: 18,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 6),
-              Text(creditsLabel(entry.log, isFutureDate)),
+              if (showScore) ...[
+                Icon(
+                  Icons.toll_outlined,
+                  size: 18,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+                Text(creditsLabel(entry.log, isFutureDate)),
+              ],
               const Spacer(),
               _ActivityAction(
                 entry: entry,

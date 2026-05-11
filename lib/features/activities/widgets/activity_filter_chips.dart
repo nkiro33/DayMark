@@ -14,17 +14,20 @@ class ActivityFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final filter in filters)
-          FilterChip(
-            label: Text(filter),
-            selected: filter == selectedFilter,
-            onSelected: (_) => onSelected(filter),
-          ),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final filter in filters) ...[
+            ChoiceChip(
+              label: Text(filter),
+              selected: filter == selectedFilter,
+              onSelected: (_) => onSelected(filter),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
     );
   }
 }

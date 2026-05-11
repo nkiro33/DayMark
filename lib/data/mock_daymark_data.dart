@@ -1,4 +1,5 @@
 import '../models/models.dart';
+import 'presaved_activity_templates.dart';
 
 class DailyActivityEntry {
   const DailyActivityEntry({required this.activity, this.log});
@@ -41,30 +42,51 @@ class MockDaymarkData {
       updatedAt: now,
     );
 
-    categories = const [
-      ActivityCategory(
+    categories = [
+      const ActivityCategory(
         id: 'category-good-habit',
         name: 'Good Habit',
         code: 'good_habit',
       ),
-      ActivityCategory(id: 'category-study', name: 'Study', code: 'study'),
-      ActivityCategory(
+      const ActivityCategory(id: 'category-work', name: 'Work', code: 'work'),
+      const ActivityCategory(
+        id: 'category-study',
+        name: 'Study',
+        code: 'study',
+      ),
+      const ActivityCategory(
+        id: 'category-course',
+        name: 'Course',
+        code: 'course',
+      ),
+      const ActivityCategory(
         id: 'category-project',
         name: 'Project',
         code: 'project',
       ),
-      ActivityCategory(
+      const ActivityCategory(
         id: 'category-bad-habit',
         name: 'Bad Habit',
         code: 'bad_habit',
       ),
-      ActivityCategory(id: 'category-health', name: 'Health', code: 'health'),
-      ActivityCategory(
+      const ActivityCategory(
+        id: 'category-health',
+        name: 'Health',
+        code: 'health',
+      ),
+      const ActivityCategory(
         id: 'category-personal',
         name: 'Personal',
         code: 'personal',
       ),
+      const ActivityCategory(
+        id: 'category-to-do',
+        name: 'To-do',
+        code: 'to_do',
+      ),
     ];
+
+    presavedTemplates = appPresavedActivityTemplates;
 
     activities = [
       ActivityTemplate(
@@ -312,6 +334,7 @@ class MockDaymarkData {
   late final UserProfile userProfile;
   late final List<ActivityCategory> categories;
   late final List<ActivityTemplate> activities;
+  late final List<PresavedActivityTemplate> presavedTemplates;
   late final List<ActivitySchedule> schedules;
   late final List<CreditRule> creditRules;
   late final List<ActivityOption> activityOptions;
@@ -406,6 +429,43 @@ class MockDaymarkData {
     return categories
         .where((category) => category.id == activity.categoryId)
         .first;
+  }
+
+  ActivityCategory categoryForPresavedTemplate(
+    PresavedActivityTemplate template,
+  ) {
+    return categories
+        .where((category) => category.id == template.categoryId)
+        .first;
+  }
+
+  String resolveCategoryId({
+    required String categoryId,
+    String? customCategoryName,
+  }) {
+    final normalizedName = customCategoryName?.trim();
+    if (normalizedName == null || normalizedName.isEmpty) {
+      return categoryId;
+    }
+
+    final existing = categories
+        .where(
+          (category) =>
+              category.name.toLowerCase() == normalizedName.toLowerCase(),
+        )
+        .firstOrNull;
+    if (existing != null) {
+      return existing.id;
+    }
+
+    final code = _categoryCode(normalizedName);
+    final category = ActivityCategory(
+      id: 'category-custom-$code-${categories.length + 1}',
+      name: normalizedName,
+      code: code,
+    );
+    categories.add(category);
+    return category.id;
   }
 
   List<ActivityOption> optionsForActivity(String activityId) {
@@ -613,7 +673,9 @@ class MockDaymarkData {
       description: description ?? 'Recurring activity.',
       activityType: activityType,
       trackingType: trackingType,
-      activityScope: ActivityScope.recurring,
+      activityScope: frequency == ScheduleFrequency.manual
+          ? ActivityScope.manual
+          : ActivityScope.recurring,
       startDate: target,
       createdAt: now,
       updatedAt: now,
@@ -652,6 +714,178 @@ class MockDaymarkData {
     }
 
     return activity;
+  }
+
+  ActivityTemplate createActivityFromPresavedTemplate(
+    PresavedActivityTemplate template,
+  ) {
+    final now = DateTime.now();
+    final idSuffix = '${template.id}-${activities.length + 1}';
+    final activity = ActivityTemplate(
+      id: 'activity-from-$idSuffix',
+      userId: userId,
+      categoryId: template.categoryId,
+      title: template.title,
+      description: template.description,
+      activityType: template.activityType,
+      trackingType: template.trackingType,
+      activityScope: template.activityScope,
+      isActive: true,
+      startDate: today,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    activities.add(activity);
+    schedules.add(
+      ActivitySchedule(
+        id: 'schedule-from-$idSuffix',
+        activityId: activity.id,
+        frequency: template.frequency,
+        daysOfWeek: template.daysOfWeek,
+        expectedDurationMinutes: template.expectedDurationMinutes,
+      ),
+    );
+    creditRules.add(
+      CreditRule(
+        id: 'credit-from-$idSuffix',
+        activityId: activity.id,
+        baseCredit: template.baseCredit,
+        creditPerMinute: _defaultCreditPerMinute(
+          template.trackingType,
+          template.creditPerMinute,
+        ),
+        creditPerUnit: _defaultCreditPerUnit(
+          template.trackingType,
+          template.creditPerUnit,
+        ),
+        maxDailyCredit: template.maxDailyCredit,
+        penaltyCredit: template.penaltyCredit,
+      ),
+    );
+
+    return activity;
+  }
+
+  ActivityTemplate updateReusableActivity({
+    required String activityId,
+    required String title,
+    String? description,
+    required String categoryId,
+    required ActivityType activityType,
+    required TrackingType trackingType,
+    required ScheduleFrequency frequency,
+    List<int> daysOfWeek = const [],
+    int? expectedDurationMinutes,
+    required double baseCredit,
+    required double creditPerMinute,
+    required double creditPerUnit,
+    double? maxDailyCredit,
+    required double penaltyCredit,
+    List<ActivityOptionInput> categoricalOptions = const [],
+  }) {
+    final existingIndex = activities.indexWhere(
+      (activity) => activity.id == activityId,
+    );
+    if (existingIndex == -1) {
+      throw ArgumentError.value(activityId, 'activityId', 'Unknown activity');
+    }
+
+    final existing = activities[existingIndex];
+    final normalizedTitle = title.trim();
+    if (normalizedTitle.isEmpty) {
+      throw ArgumentError.value(title, 'title', 'Title cannot be empty');
+    }
+
+    final updated = ActivityTemplate(
+      id: existing.id,
+      userId: existing.userId,
+      categoryId: categoryId,
+      title: normalizedTitle,
+      description: description,
+      activityType: activityType,
+      trackingType: trackingType,
+      activityScope: frequency == ScheduleFrequency.manual
+          ? ActivityScope.manual
+          : ActivityScope.recurring,
+      isActive: existing.isActive,
+      startDate: existing.startDate,
+      endDate: existing.endDate,
+      createdAt: existing.createdAt,
+      updatedAt: DateTime.now(),
+    );
+    activities[existingIndex] = updated;
+
+    _upsertSchedule(
+      activityId: activityId,
+      frequency: frequency,
+      daysOfWeek: daysOfWeek,
+      expectedDurationMinutes: expectedDurationMinutes,
+    );
+    _upsertCreditRule(
+      activityId: activityId,
+      baseCredit: baseCredit,
+      creditPerMinute: _defaultCreditPerMinute(trackingType, creditPerMinute),
+      creditPerUnit: _defaultCreditPerUnit(trackingType, creditPerUnit),
+      maxDailyCredit: maxDailyCredit,
+      penaltyCredit: penaltyCredit,
+    );
+    activityOptions.removeWhere((option) => option.activityId == activityId);
+    _addCategoricalOptions(
+      activity: updated,
+      idSuffix: '$activityId-edit',
+      options: categoricalOptions,
+      now: DateTime.now(),
+    );
+
+    return updated;
+  }
+
+  ActivityTemplate setActivityActive({
+    required String activityId,
+    required bool isActive,
+  }) {
+    final index = activities.indexWhere(
+      (activity) => activity.id == activityId,
+    );
+    if (index == -1) {
+      throw ArgumentError.value(activityId, 'activityId', 'Unknown activity');
+    }
+
+    final existing = activities[index];
+    final updated = ActivityTemplate(
+      id: existing.id,
+      userId: existing.userId,
+      categoryId: existing.categoryId,
+      title: existing.title,
+      description: existing.description,
+      activityType: existing.activityType,
+      trackingType: existing.trackingType,
+      activityScope: existing.activityScope,
+      isActive: isActive,
+      startDate: existing.startDate,
+      endDate: existing.endDate,
+      createdAt: existing.createdAt,
+      updatedAt: DateTime.now(),
+    );
+    activities[index] = updated;
+    return updated;
+  }
+
+  ActivitySchedule? scheduleForActivity(String activityId) {
+    return schedules
+        .where((schedule) => schedule.activityId == activityId)
+        .firstOrNull;
+  }
+
+  CreditRule? creditRuleForActivity(String activityId) {
+    return _creditRuleForActivity(activityId);
+  }
+
+  List<DailyActivityLog> recentLogsForActivity(String activityId) {
+    final logs = dailyLogs.where((log) => log.activityId == activityId).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+    return logs.take(5).toList();
   }
 
   int? expectedDurationForActivity(String activityId) {
@@ -821,6 +1055,56 @@ class MockDaymarkData {
         .firstOrNull;
   }
 
+  void _upsertSchedule({
+    required String activityId,
+    required ScheduleFrequency frequency,
+    required List<int> daysOfWeek,
+    required int? expectedDurationMinutes,
+  }) {
+    final index = schedules.indexWhere(
+      (schedule) => schedule.activityId == activityId,
+    );
+    final schedule = ActivitySchedule(
+      id: index == -1 ? 'schedule-$activityId' : schedules[index].id,
+      activityId: activityId,
+      frequency: frequency,
+      daysOfWeek: daysOfWeek,
+      expectedDurationMinutes: expectedDurationMinutes,
+    );
+    if (index == -1) {
+      schedules.add(schedule);
+    } else {
+      schedules[index] = schedule;
+    }
+  }
+
+  void _upsertCreditRule({
+    required String activityId,
+    required double baseCredit,
+    required double creditPerMinute,
+    required double creditPerUnit,
+    required double? maxDailyCredit,
+    required double penaltyCredit,
+  }) {
+    final index = creditRules.indexWhere(
+      (rule) => rule.activityId == activityId,
+    );
+    final rule = CreditRule(
+      id: index == -1 ? 'credit-$activityId' : creditRules[index].id,
+      activityId: activityId,
+      baseCredit: baseCredit,
+      creditPerMinute: creditPerMinute,
+      creditPerUnit: creditPerUnit,
+      maxDailyCredit: maxDailyCredit,
+      penaltyCredit: penaltyCredit,
+    );
+    if (index == -1) {
+      creditRules.add(rule);
+    } else {
+      creditRules[index] = rule;
+    }
+  }
+
   double _expectedCreditsForActivity(String activityId) {
     final rule = _creditRuleForActivity(activityId);
     if (rule == null) {
@@ -922,4 +1206,13 @@ String _dateKey(DateTime date) {
   final month = date.month.toString().padLeft(2, '0');
   final day = date.day.toString().padLeft(2, '0');
   return '${date.year}-$month-$day';
+}
+
+String _categoryCode(String name) {
+  final cleaned = name
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'^_+|_+$'), '');
+  return cleaned.isEmpty ? 'other' : cleaned;
 }

@@ -124,13 +124,24 @@ class _DurationMinutesSheetState extends State<DurationMinutesSheet> {
                 ),
               ],
               const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  key: ValueKey('save-${widget.keyPrefix}-duration'),
-                  onPressed: _submit,
-                  child: Text(widget.saveLabel),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      key: ValueKey('cancel-${widget.keyPrefix}-duration'),
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      key: ValueKey('save-${widget.keyPrefix}-duration'),
+                      onPressed: _submit,
+                      child: Text(widget.saveLabel),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

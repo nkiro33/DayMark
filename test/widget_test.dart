@@ -1,4 +1,7 @@
 import 'package:daymark/app/daymark_app.dart';
+import 'package:daymark/app/daymark_settings.dart';
+import 'package:daymark/features/activities/activities_screen.dart';
+import 'package:daymark/features/settings/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -253,6 +256,256 @@ void main() {
 
     expect(find.text('Read'), findsOneWidget);
     expect(find.text('1 credits'), findsOneWidget);
+  });
+
+  testWidgets('shows activity management cards and pauses an activity', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: ActivitiesScreen()));
+
+    expect(find.text('New Activity'), findsOneWidget);
+    expect(find.text('Good Habits'), findsOneWidget);
+    expect(find.text('Inactive'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('activity-management-card-activity-study')),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(
+      find.byKey(const ValueKey('activity-management-card-activity-study')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('+1.5 / 15 min'), findsWidgets);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('activity-management-card-activity-make-bed')),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Make Bed'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Pause Activity'),
+      120,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(find.text('Pause Activity'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Make Bed paused.'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('activity-management-card-activity-make-bed')),
+      findsOneWidget,
+    );
+    expect(find.text('Inactive'), findsWidgets);
+  });
+
+  testWidgets('creates a reusable activity from the Activities screen', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: ActivitiesScreen()));
+
+    await tester.tap(find.byKey(const ValueKey('activities-new-activity')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('recurring-title-field')),
+      'Read',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('save-recurring-activity')),
+      300,
+      scrollable: _activityFormScrollable,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('save-recurring-activity')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Read added.'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Read'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Read'), findsOneWidget);
+  });
+
+  testWidgets('activity form uses good or bad and supports custom category', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: ActivitiesScreen()));
+
+    await tester.tap(find.byKey(const ValueKey('activities-new-activity')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Good'), findsOneWidget);
+    expect(find.text('Bad'), findsOneWidget);
+    expect(find.text('Track'), findsNothing);
+    expect(find.byKey(const ValueKey('cancel-activity-form')), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('recurring-title-field')),
+      'Practice piano',
+    );
+    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Other').last);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('custom-category-field')), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('custom-category-field')),
+      'Music',
+    );
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('save-recurring-activity')),
+      300,
+      scrollable: _activityFormScrollable,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('save-recurring-activity')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Practice piano added.'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Practice piano'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.textContaining('Music'), findsOneWidget);
+  });
+
+  testWidgets('shows presaved templates and keeps search inside the tab', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: ActivitiesScreen()));
+
+    await tester.enterText(find.byType(SearchBar), 'Drink');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Drink Water'), findsOneWidget);
+
+    await tester.enterText(find.byType(SearchBar), '');
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Good Habits'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(SearchBar), 'study');
+    await tester.pumpAndSettle();
+
+    expect(find.text('No matching activities.'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('activity-management-card-activity-study')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('presaved-template-card-template-study')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('uses a presaved template as an editable activity', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: ActivitiesScreen()));
+
+    await tester.ensureVisible(find.widgetWithText(ChoiceChip, 'Health'));
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Health'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(SearchBar), 'Drink');
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(
+          const ValueKey('presaved-template-card-template-drink-water'),
+        ),
+        matching: find.text('Use Template'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('recurring-title-field')), findsOneWidget);
+    expect(find.text('Drink Water'), findsWidgets);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('save-recurring-activity')),
+      300,
+      scrollable: _activityFormScrollable,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('save-recurring-activity')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Drink Water added.'), findsOneWidget);
+  });
+
+  testWidgets('shows MVP settings sections and updates preferences', (
+    WidgetTester tester,
+  ) async {
+    final settings = DaymarkSettings();
+    await tester.pumpWidget(
+      MaterialApp(home: SettingsScreen(settings: settings)),
+    );
+
+    expect(find.text('Appearance'), findsOneWidget);
+    expect(find.text('Calendar'), findsOneWidget);
+    expect(find.text('Reminders'), findsOneWidget);
+    expect(find.text('System default'), findsOneWidget);
+    expect(find.text('Monday'), findsOneWidget);
+    expect(find.text('Off'), findsOneWidget);
+
+    await tester.tap(find.text('Theme'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Dark'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dark'), findsOneWidget);
+    expect(settings.themePreference, DaymarkThemePreference.dark);
+
+    await tester.tap(find.byKey(const ValueKey('daily-reminder-switch')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('9:00'), findsWidgets);
+    expect(settings.dailyReminderEnabled, isTrue);
+
+    await tester.scrollUntilVisible(
+      find.text('Reflections'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Reflections'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Scoring'),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('Scoring'), findsOneWidget);
+    expect(find.text('Data'), findsNothing);
+  });
+
+  testWidgets('daily score setting hides score on the Daily screen', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const DaymarkApp());
+
+    expect(find.textContaining('credits'), findsWidgets);
+
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('daily-score-switch')),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -160));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('daily-score-switch')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.today_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Daily score hidden'), findsOneWidget);
+    expect(find.textContaining('credits'), findsNothing);
   });
 }
 

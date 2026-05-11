@@ -12,7 +12,8 @@ void main() {
     });
 
     test('includes focused sample data for the MVP model set', () {
-      expect(data.categories, hasLength(6));
+      expect(data.categories, hasLength(9));
+      expect(data.presavedTemplates.length, greaterThanOrEqualTo(15));
       expect(
         data.activities.map((activity) => activity.title),
         containsAll([
@@ -26,6 +27,23 @@ void main() {
       expect(data.schedules, hasLength(data.activities.length));
       expect(data.creditRules, hasLength(data.activities.length));
       expect(data.dailyCheckIns.single.sleepMinutes, 450);
+    });
+
+    test('creates user activities from presaved template defaults', () {
+      final template = data.presavedTemplates.singleWhere(
+        (template) => template.title == 'Drink Water',
+      );
+
+      final activity = data.createActivityFromPresavedTemplate(template);
+      final schedule = data.scheduleForActivity(activity.id);
+      final creditRule = data.creditRuleForActivity(activity.id);
+
+      expect(activity.title, 'Drink Water');
+      expect(activity.isActive, isTrue);
+      expect(activity.categoryId, 'category-health');
+      expect(schedule?.frequency, ScheduleFrequency.daily);
+      expect(creditRule?.creditPerUnit, 0.5);
+      expect(creditRule?.maxDailyCredit, 4);
     });
 
     test('returns logs for today, yesterday, and a future date', () {
@@ -300,6 +318,71 @@ void main() {
         data.getLogsForDate(today).map((log) => log.activityId),
         isNot(contains('activity-study')),
       );
+    });
+
+    test('pauses and reactivates reusable activities', () {
+      data.setActivityActive(activityId: 'activity-study', isActive: false);
+
+      expect(
+        data.activities
+            .singleWhere((activity) => activity.id == 'activity-study')
+            .isActive,
+        isFalse,
+      );
+
+      data.setActivityActive(activityId: 'activity-study', isActive: true);
+
+      expect(
+        data.activities
+            .singleWhere((activity) => activity.id == 'activity-study')
+            .isActive,
+        isTrue,
+      );
+    });
+
+    test('updates reusable activity configuration', () {
+      final updated = data.updateReusableActivity(
+        activityId: 'activity-study',
+        title: 'Deep Study',
+        description: 'Focused course work.',
+        categoryId: 'category-study',
+        activityType: ActivityType.positive,
+        trackingType: TrackingType.duration,
+        frequency: ScheduleFrequency.weekly,
+        daysOfWeek: const [2, 4],
+        expectedDurationMinutes: 45,
+        baseCredit: 0,
+        creditPerMinute: 0.2,
+        creditPerUnit: 0,
+        maxDailyCredit: 9,
+        penaltyCredit: 0,
+      );
+
+      final schedule = data.scheduleForActivity('activity-study');
+      final creditRule = data.creditRuleForActivity('activity-study');
+
+      expect(updated.title, 'Deep Study');
+      expect(updated.description, 'Focused course work.');
+      expect(schedule?.daysOfWeek, [2, 4]);
+      expect(schedule?.expectedDurationMinutes, 45);
+      expect(creditRule?.creditPerMinute, 0.2);
+      expect(creditRule?.maxDailyCredit, 9);
+    });
+
+    test('creates custom categories from Other activity form input', () {
+      final categoryId = data.resolveCategoryId(
+        categoryId: '__other_category__',
+        customCategoryName: 'Music',
+      );
+
+      final activity = data.createRecurringActivity(
+        title: 'Practice piano',
+        startDate: today,
+        categoryId: categoryId,
+      );
+
+      expect(data.categoryForActivity(activity).name, 'Music');
+      expect(data.categoryForActivity(activity).code, 'music');
     });
   });
 }

@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../data/mock_daymark_data.dart';
 import '../features/activities/activities_screen.dart';
 import '../features/daily/daily_screen.dart';
 import '../features/settings/settings_screen.dart';
+import 'daymark_settings.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  const AppShell({super.key, required this.settings});
+
+  final DaymarkSettings settings;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -13,6 +17,7 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
+  final MockDaymarkData _data = MockDaymarkData();
 
   static const _destinations = <NavigationDestination>[
     NavigationDestination(
@@ -32,17 +37,17 @@ class _AppShellState extends State<AppShell> {
     ),
   ];
 
-  static const _screens = <Widget>[
-    DailyScreen(),
-    ActivitiesScreen(),
-    SettingsScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final screens = <Widget>[
+      DailyScreen(data: _data, settings: widget.settings),
+      ActivitiesScreen(data: _data),
+      SettingsScreen(settings: widget.settings),
+    ];
+
     return Scaffold(
       body: SafeArea(
-        child: IndexedStack(index: _selectedIndex, children: _screens),
+        child: IndexedStack(index: _selectedIndex, children: screens),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,

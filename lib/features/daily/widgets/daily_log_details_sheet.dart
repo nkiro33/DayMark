@@ -117,10 +117,24 @@ class _DailyLogDetailsSheetState extends State<DailyLogDetailsSheet> {
             ),
             const SizedBox(height: 12),
             if (!widget.isFutureDate)
-              FilledButton(
-                key: const ValueKey('save-daily-log'),
-                onPressed: _saveDraft,
-                child: const Text('Save Log'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      key: const ValueKey('cancel-daily-log'),
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      key: const ValueKey('save-daily-log'),
+                      onPressed: _saveDraft,
+                      child: const Text('Save Log'),
+                    ),
+                  ),
+                ],
               ),
             if (_log != null) ...[
               const SizedBox(height: 8),
@@ -132,10 +146,23 @@ class _DailyLogDetailsSheetState extends State<DailyLogDetailsSheet> {
               ),
             ] else if (widget.isFutureDate) ...[
               const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: widget.onPlanActivity,
-                icon: const Icon(Icons.add_task),
-                label: const Text('Plan Activity'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: widget.onPlanActivity,
+                      icon: const Icon(Icons.add_task),
+                      label: const Text('Plan Activity'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ],

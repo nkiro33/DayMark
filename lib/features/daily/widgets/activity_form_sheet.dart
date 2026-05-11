@@ -12,6 +12,20 @@ class ActivityFormSheet extends StatefulWidget {
     required this.categories,
     required this.isRecurring,
     required this.onSave,
+    this.initialTitle,
+    this.initialDescription,
+    this.initialCategoryId,
+    this.initialActivityType,
+    this.initialTrackingType,
+    this.initialFrequency,
+    this.initialDaysOfWeek,
+    this.initialExpectedDurationMinutes,
+    this.initialBaseCredit,
+    this.initialCreditPerMinute,
+    this.initialCreditPerUnit,
+    this.initialMaxDailyCredit,
+    this.initialPenaltyCredit,
+    this.initialCategoricalOptions,
   });
 
   final String title;
@@ -19,43 +33,109 @@ class ActivityFormSheet extends StatefulWidget {
   final List<ActivityCategory> categories;
   final bool isRecurring;
   final ValueChanged<ActivityFormResult> onSave;
+  final String? initialTitle;
+  final String? initialDescription;
+  final String? initialCategoryId;
+  final ActivityType? initialActivityType;
+  final TrackingType? initialTrackingType;
+  final ScheduleFrequency? initialFrequency;
+  final List<int>? initialDaysOfWeek;
+  final int? initialExpectedDurationMinutes;
+  final double? initialBaseCredit;
+  final double? initialCreditPerMinute;
+  final double? initialCreditPerUnit;
+  final double? initialMaxDailyCredit;
+  final double? initialPenaltyCredit;
+  final List<ActivityOptionInput>? initialCategoricalOptions;
 
   @override
   State<ActivityFormSheet> createState() => _ActivityFormSheetState();
 }
 
 class _ActivityFormSheetState extends State<ActivityFormSheet> {
+  static const _otherCategoryId = '__other_category__';
+
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  final _baseCreditController = TextEditingController(text: '1');
-  final _creditPerMinuteController = TextEditingController();
-  final _creditPerUnitController = TextEditingController();
-  final _maxDailyCreditController = TextEditingController();
-  final _penaltyCreditController = TextEditingController(text: '0');
-  final _expectedDurationController = TextEditingController();
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _customCategoryController;
+  late final TextEditingController _baseCreditController;
+  late final TextEditingController _creditPerMinuteController;
+  late final TextEditingController _creditPerUnitController;
+  late final TextEditingController _maxDailyCreditController;
+  late final TextEditingController _penaltyCreditController;
+  late final TextEditingController _expectedDurationController;
   final List<_CategoricalOptionControllers> _categoricalOptions = [];
 
-  late String _categoryId = widget.categories.last.id;
-  ActivityType _activityType = ActivityType.positive;
-  TrackingType _trackingType = TrackingType.boolean;
-  ScheduleFrequency _frequency = ScheduleFrequency.daily;
-  final Set<int> _daysOfWeek = {1, 2, 3, 4, 5};
+  late String _categoryId;
+  late ActivityType _activityType;
+  late TrackingType _trackingType;
+  late ScheduleFrequency _frequency;
+  late final Set<int> _daysOfWeek;
 
   @override
   void initState() {
     super.initState();
-    _categoricalOptions.addAll([
-      _CategoricalOptionControllers(label: 'Too little', creditValue: '0'),
-      _CategoricalOptionControllers(label: 'Normal', creditValue: '1'),
-      _CategoricalOptionControllers(label: 'Too much', creditValue: '0'),
-    ]);
+    _titleController = TextEditingController(text: widget.initialTitle);
+    _descriptionController = TextEditingController(
+      text: widget.initialDescription,
+    );
+    _customCategoryController = TextEditingController(text: 'Other');
+    _baseCreditController = TextEditingController(
+      text: _formatInitialNumber(widget.initialBaseCredit ?? 1),
+    );
+    _creditPerMinuteController = TextEditingController(
+      text: _formatOptionalInitialNumber(widget.initialCreditPerMinute),
+    );
+    _creditPerUnitController = TextEditingController(
+      text: _formatOptionalInitialNumber(widget.initialCreditPerUnit),
+    );
+    _maxDailyCreditController = TextEditingController(
+      text: _formatOptionalInitialNumber(widget.initialMaxDailyCredit),
+    );
+    _penaltyCreditController = TextEditingController(
+      text: _formatInitialNumber(widget.initialPenaltyCredit ?? 0),
+    );
+    _expectedDurationController = TextEditingController(
+      text: widget.initialExpectedDurationMinutes?.toString(),
+    );
+    _categoryId =
+        widget.initialCategoryId ??
+        (widget.categories.isNotEmpty ? widget.categories.last.id : '');
+    _activityType = widget.initialActivityType == ActivityType.negative
+        ? ActivityType.negative
+        : ActivityType.positive;
+    _trackingType = widget.initialTrackingType ?? TrackingType.boolean;
+    _frequency = widget.initialFrequency ?? ScheduleFrequency.daily;
+    _daysOfWeek = {
+      ...(widget.initialDaysOfWeek?.isNotEmpty == true
+          ? widget.initialDaysOfWeek!
+          : const [1, 2, 3, 4, 5]),
+    };
+
+    final initialOptions = widget.initialCategoricalOptions;
+    if (initialOptions != null && initialOptions.isNotEmpty) {
+      _categoricalOptions.addAll([
+        for (final option in initialOptions)
+          _CategoricalOptionControllers(
+            label: option.label,
+            creditValue: _formatInitialNumber(option.creditValue),
+          ),
+      ]);
+    } else {
+      _categoricalOptions.addAll([
+        _CategoricalOptionControllers(label: 'Too little', creditValue: '0'),
+        _CategoricalOptionControllers(label: 'Normal', creditValue: '1'),
+        _CategoricalOptionControllers(label: 'Too much', creditValue: '0'),
+      ]);
+    }
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _descriptionController.dispose();
+    _customCategoryController.dispose();
     _baseCreditController.dispose();
     _creditPerMinuteController.dispose();
     _creditPerUnitController.dispose();
@@ -130,6 +210,10 @@ class _ActivityFormSheetState extends State<ActivityFormSheet> {
                               value: category.id,
                               child: Text(category.name),
                             ),
+                          const DropdownMenuItem(
+                            value: _otherCategoryId,
+                            child: Text('Other'),
+                          ),
                         ],
                         onChanged: (value) {
                           if (value != null) {
@@ -137,20 +221,29 @@ class _ActivityFormSheetState extends State<ActivityFormSheet> {
                           }
                         },
                       ),
+                      if (_categoryId == _otherCategoryId) ...[
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          key: const ValueKey('custom-category-field'),
+                          controller: _customCategoryController,
+                          textInputAction: TextInputAction.next,
+                          decoration: const InputDecoration(
+                            labelText: 'Category name',
+                            hintText: 'Other',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       SegmentedButton<ActivityType>(
                         segments: const [
                           ButtonSegment(
                             value: ActivityType.positive,
-                            label: Text('Build'),
-                          ),
-                          ButtonSegment(
-                            value: ActivityType.neutral,
-                            label: Text('Track'),
+                            label: Text('Good'),
                           ),
                           ButtonSegment(
                             value: ActivityType.negative,
-                            label: Text('Reduce'),
+                            label: Text('Bad'),
                           ),
                         ],
                         selected: {_activityType},
@@ -284,17 +377,28 @@ class _ActivityFormSheetState extends State<ActivityFormSheet> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    key: ValueKey(
-                      widget.isRecurring
-                          ? 'save-recurring-activity'
-                          : 'save-one-time-activity',
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        key: const ValueKey('cancel-activity-form'),
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancel'),
+                      ),
                     ),
-                    onPressed: _submit,
-                    child: Text(widget.submitLabel),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        key: ValueKey(
+                          widget.isRecurring
+                              ? 'save-recurring-activity'
+                              : 'save-one-time-activity',
+                        ),
+                        onPressed: _submit,
+                        child: Text(widget.submitLabel),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -302,6 +406,14 @@ class _ActivityFormSheetState extends State<ActivityFormSheet> {
         ),
       ),
     );
+  }
+
+  String? get _customCategoryName {
+    if (_categoryId != _otherCategoryId) {
+      return null;
+    }
+    final trimmed = _customCategoryController.text.trim();
+    return trimmed.isEmpty ? 'Other' : trimmed;
   }
 
   void _submit() {
@@ -314,6 +426,7 @@ class _ActivityFormSheetState extends State<ActivityFormSheet> {
         title: _titleController.text.trim(),
         description: _emptyToNull(_descriptionController.text),
         categoryId: _categoryId,
+        customCategoryName: _customCategoryName,
         activityType: _activityType,
         trackingType: _trackingType,
         baseCredit: _parseDouble(_baseCreditController.text),
@@ -563,6 +676,20 @@ double? _parseOptionalDouble(String value) {
 int? _parseOptionalInt(String value) {
   final trimmed = value.trim();
   return trimmed.isEmpty ? null : int.tryParse(trimmed);
+}
+
+String _formatInitialNumber(double value) {
+  if (value == value.roundToDouble()) {
+    return value.toInt().toString();
+  }
+  return value.toString();
+}
+
+String _formatOptionalInitialNumber(double? value) {
+  if (value == null || value == 0) {
+    return '';
+  }
+  return _formatInitialNumber(value);
 }
 
 String _weekdayLabel(int day) {

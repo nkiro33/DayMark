@@ -14,7 +14,7 @@ class ActivitySearchBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SearchBar(
       controller: controller,
-      hintText: 'Search activities',
+      hintText: 'Search activities...',
       leading: const Icon(Icons.search),
       onChanged: onChanged,
     );

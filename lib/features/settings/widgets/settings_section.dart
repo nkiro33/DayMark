@@ -22,8 +22,11 @@ class SettingsSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          ...children,
+          const SizedBox(height: 12),
+          for (final child in children) ...[
+            child,
+            if (child != children.last) const Divider(height: 20),
+          ],
         ],
       ),
     );

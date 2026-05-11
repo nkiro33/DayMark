@@ -5,6 +5,7 @@ class ActivityFormResult {
     required this.title,
     this.description,
     required this.categoryId,
+    this.customCategoryName,
     required this.activityType,
     required this.trackingType,
     required this.baseCredit,
@@ -21,6 +22,7 @@ class ActivityFormResult {
   final String title;
   final String? description;
   final String categoryId;
+  final String? customCategoryName;
   final ActivityType activityType;
   final TrackingType trackingType;
   final double baseCredit;

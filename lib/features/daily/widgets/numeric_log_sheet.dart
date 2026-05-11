@@ -85,13 +85,24 @@ class _NumericLogSheetState extends State<NumericLogSheet> {
                 onFieldSubmitted: (_) => _submit(),
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  key: const ValueKey('save-numeric-log'),
-                  onPressed: _submit,
-                  child: Text(widget.submitLabel),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      key: const ValueKey('cancel-numeric-log'),
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      key: const ValueKey('save-numeric-log'),
+                      onPressed: _submit,
+                      child: Text(widget.submitLabel),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
