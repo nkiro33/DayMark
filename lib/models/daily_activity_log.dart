@@ -11,6 +11,7 @@ class DailyActivityLog {
     this.durationMinutes,
     this.notes,
     this.creditsEarned = 0,
+    this.sortOrder = 1000,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -24,6 +25,7 @@ class DailyActivityLog {
   final int? durationMinutes;
   final String? notes;
   final double creditsEarned;
+  final int sortOrder;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -38,6 +40,7 @@ class DailyActivityLog {
       'duration_minutes': durationMinutes,
       'notes': notes,
       'credits_earned': creditsEarned,
+      'sort_order': sortOrder,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -57,6 +60,7 @@ class DailyActivityLog {
       durationMinutes: json['duration_minutes'] as int?,
       notes: json['notes'] as String?,
       creditsEarned: (json['credits_earned']! as num).toDouble(),
+      sortOrder: (json['sort_order'] as num?)?.toInt() ?? 1000,
       createdAt: DateTime.parse(json['created_at']! as String),
       updatedAt: DateTime.parse(json['updated_at']! as String),
     );

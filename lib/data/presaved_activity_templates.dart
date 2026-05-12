@@ -18,6 +18,7 @@ class PresavedActivityTemplate {
     this.maxDailyCredit,
     this.penaltyCredit = 0,
     this.tags = const [],
+    this.sortOrder = 1000,
   });
 
   final String id;
@@ -36,6 +37,7 @@ class PresavedActivityTemplate {
   final double? maxDailyCredit;
   final double penaltyCredit;
   final List<String> tags;
+  final int sortOrder;
 
   ActivityScope get activityScope {
     return frequency == ScheduleFrequency.manual
@@ -59,6 +61,7 @@ const appPresavedActivityTemplates = [
     creditPerMinute: 0.1,
     maxDailyCredit: 8,
     tags: ['work', 'job', 'office', 'shift'],
+    sortOrder: 100,
   ),
   PresavedActivityTemplate(
     id: 'template-deep-work',
@@ -74,6 +77,7 @@ const appPresavedActivityTemplates = [
     creditPerMinute: 0.12,
     maxDailyCredit: 10,
     tags: ['deep work', 'focus', 'productivity', 'work'],
+    sortOrder: 110,
   ),
   PresavedActivityTemplate(
     id: 'template-freelance-work',
@@ -100,6 +104,7 @@ const appPresavedActivityTemplates = [
     frequency: ScheduleFrequency.manual,
     baseCredit: 2,
     tags: ['client', 'call', 'meeting', 'work'],
+    sortOrder: 260,
   ),
   PresavedActivityTemplate(
     id: 'template-team-meeting',
@@ -139,6 +144,7 @@ const appPresavedActivityTemplates = [
     frequency: ScheduleFrequency.daily,
     baseCredit: 2,
     tags: ['planning', 'work', 'morning', 'routine'],
+    sortOrder: 180,
   ),
   PresavedActivityTemplate(
     id: 'template-finish-work-task',
@@ -152,6 +158,7 @@ const appPresavedActivityTemplates = [
     creditPerUnit: 1,
     maxDailyCredit: 6,
     tags: ['task', 'work', 'done', 'productivity'],
+    sortOrder: 170,
   ),
   PresavedActivityTemplate(
     id: 'template-code-review',
@@ -208,6 +215,7 @@ const appPresavedActivityTemplates = [
     creditPerMinute: 0.12,
     maxDailyCredit: 10,
     tags: ['feature', 'coding', 'work', 'software'],
+    sortOrder: 220,
   ),
   PresavedActivityTemplate(
     id: 'template-prepare-report',
@@ -386,6 +394,7 @@ const appPresavedActivityTemplates = [
     creditPerMinute: 0.1,
     maxDailyCredit: 8,
     tags: ['study', 'learning', 'university', 'focus'],
+    sortOrder: 120,
   ),
   PresavedActivityTemplate(
     id: 'template-attend-class',
@@ -815,6 +824,7 @@ const appPresavedActivityTemplates = [
     creditPerUnit: 0.5,
     maxDailyCredit: 4,
     tags: ['water', 'health', 'hydration'],
+    sortOrder: 130,
   ),
   PresavedActivityTemplate(
     id: 'template-exercise',
@@ -830,6 +840,7 @@ const appPresavedActivityTemplates = [
     creditPerMinute: 0.1,
     maxDailyCredit: 5,
     tags: ['exercise', 'workout', 'gym', 'health'],
+    sortOrder: 140,
   ),
   PresavedActivityTemplate(
     id: 'template-sleep-early',
@@ -842,6 +853,7 @@ const appPresavedActivityTemplates = [
     frequency: ScheduleFrequency.daily,
     baseCredit: 1,
     tags: ['sleep', 'health', 'night', 'routine'],
+    sortOrder: 210,
   ),
   PresavedActivityTemplate(
     id: 'template-morning-walk',
@@ -1263,6 +1275,7 @@ const appPresavedActivityTemplates = [
     frequency: ScheduleFrequency.daily,
     baseCredit: 2,
     tags: ['habit', 'morning', 'bed', 'routine'],
+    sortOrder: 150,
   ),
   PresavedActivityTemplate(
     id: 'template-morning-routine',
@@ -1634,6 +1647,7 @@ const appPresavedActivityTemplates = [
     baseCredit: 2,
     penaltyCredit: -5,
     tags: ['reels', 'tiktok', 'scrolling', 'distraction', 'phone'],
+    sortOrder: 160,
   ),
   PresavedActivityTemplate(
     id: 'template-reduce-junk-food',

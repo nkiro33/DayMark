@@ -134,14 +134,13 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
 
   List<ActivityTemplate> _filteredActivities() {
     return _activitiesForGroup(_selectedGroup).where(_matchesSearch).toList()
-      ..sort((a, b) => a.title.compareTo(b.title));
+      ..sort(_compareActivitySort);
   }
 
   List<PresavedActivityTemplate> _filteredPresavedTemplates() {
     return _templatesForGroup(
-        _selectedGroup,
-      ).where(_matchesTemplateSearch).toList()
-      ..sort((a, b) => a.title.compareTo(b.title));
+      _selectedGroup,
+    ).where(_matchesTemplateSearch).toList()..sort(_compareTemplateSort);
   }
 
   Iterable<ActivityTemplate> _activitiesForGroup(String group) {
@@ -160,7 +159,11 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
   }
 
   Iterable<PresavedActivityTemplate> _templatesForGroup(String group) {
-    if (group == 'All' || group == 'Inactive') {
+    if (group == 'Inactive') {
+      return const [];
+    }
+
+    if (group == 'All') {
       return _data.presavedTemplates;
     }
 
@@ -168,6 +171,28 @@ class _ActivitiesScreenState extends State<ActivitiesScreen> {
       final category = _data.categoryForPresavedTemplate(template).name;
       return _normalizedGroup(category) == _normalizedGroup(group);
     });
+  }
+
+  int _compareActivitySort(ActivityTemplate a, ActivityTemplate b) {
+    if (a.isActive != b.isActive) {
+      return a.isActive ? -1 : 1;
+    }
+    final orderComparison = a.sortOrder.compareTo(b.sortOrder);
+    if (orderComparison != 0) {
+      return orderComparison;
+    }
+    return a.title.compareTo(b.title);
+  }
+
+  int _compareTemplateSort(
+    PresavedActivityTemplate a,
+    PresavedActivityTemplate b,
+  ) {
+    final orderComparison = a.sortOrder.compareTo(b.sortOrder);
+    if (orderComparison != 0) {
+      return orderComparison;
+    }
+    return a.title.compareTo(b.title);
   }
 
   bool _matchesSearch(ActivityTemplate activity) {

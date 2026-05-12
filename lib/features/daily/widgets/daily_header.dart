@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../daily_formatters.dart';
-import '../../../shared/widgets/primary_action_button.dart';
 
 class DailyHeader extends StatelessWidget implements PreferredSizeWidget {
   const DailyHeader({
@@ -20,25 +19,46 @@ class DailyHeader extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onPrimaryAction;
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => const Size.fromHeight(72);
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return AppBar(
+      toolbarHeight: 72,
       title: Text(titleForDate(selectedDate, today)),
       actions: [
         IconButton(
           onPressed: onOpenCalendar,
           tooltip: 'Open calendar',
-          icon: const Icon(Icons.calendar_month_outlined),
+          style: IconButton.styleFrom(
+            backgroundColor: colorScheme.surfaceContainerHighest.withValues(
+              alpha: 0.44,
+            ),
+            foregroundColor: colorScheme.onSurfaceVariant,
+          ),
+          icon: const Icon(Icons.calendar_today_outlined),
         ),
         Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: PrimaryActionButton(
-            key: const ValueKey('daily-primary-action'),
-            onPressed: onPrimaryAction,
-            icon: isFutureDate ? Icons.add : Icons.add_task,
-            label: isFutureDate ? '+ Add' : '+ Log',
+          padding: const EdgeInsets.only(right: 16),
+          child: IconButton(
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Daily reminders are managed in Settings.'),
+                ),
+              );
+            },
+            tooltip: 'Reminder settings',
+            style: IconButton.styleFrom(
+              backgroundColor: colorScheme.surfaceContainerHighest.withValues(
+                alpha: 0.44,
+              ),
+              foregroundColor: colorScheme.onSurfaceVariant,
+            ),
+            icon: const Icon(Icons.notifications_none_outlined),
           ),
         ),
       ],

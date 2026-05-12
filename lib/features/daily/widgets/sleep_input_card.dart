@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../shared/widgets/app_card.dart';
-
 class SleepInputCard extends StatelessWidget {
   const SleepInputCard({
     super.key,
@@ -15,23 +13,40 @@ class SleepInputCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final label = sleepMinutes == null
+        ? 'Sleep: Not added'
+        : 'Sleep: ${_formatSleepDuration(sleepMinutes!)}';
 
-    return AppCard(
-      onTap: onTap,
-      child: Row(
-        children: [
-          Icon(Icons.bedtime_outlined, color: theme.colorScheme.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              sleepMinutes == null
-                  ? 'Sleep: Not added yet'
-                  : 'Sleep: ${_formatSleepDuration(sleepMinutes!)}',
-              style: theme.textTheme.titleMedium,
-            ),
+    return Material(
+      color: colorScheme.onSurface.withValues(alpha: 0.05),
+      shape: StadiumBorder(
+        side: BorderSide(color: colorScheme.onSurface.withValues(alpha: 0.10)),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.bedtime, size: 18, color: colorScheme.tertiary),
+              const SizedBox(width: 7),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const Icon(Icons.chevron_right),
-        ],
+        ),
       ),
     );
   }

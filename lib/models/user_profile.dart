@@ -4,6 +4,7 @@ class UserProfile {
     this.displayName,
     required this.timezone,
     this.onboardingCompleted = false,
+    this.dailyCreditGoal = 45,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -12,6 +13,7 @@ class UserProfile {
   final String? displayName;
   final String timezone;
   final bool onboardingCompleted;
+  final double dailyCreditGoal;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -21,6 +23,7 @@ class UserProfile {
       'display_name': displayName,
       'timezone': timezone,
       'onboarding_completed': onboardingCompleted,
+      'daily_credit_goal': dailyCreditGoal,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -32,6 +35,7 @@ class UserProfile {
       displayName: json['display_name'] as String?,
       timezone: json['timezone']! as String,
       onboardingCompleted: json['onboarding_completed']! as bool,
+      dailyCreditGoal: (json['daily_credit_goal'] as num?)?.toDouble() ?? 45,
       createdAt: DateTime.parse(json['created_at']! as String),
       updatedAt: DateTime.parse(json['updated_at']! as String),
     );

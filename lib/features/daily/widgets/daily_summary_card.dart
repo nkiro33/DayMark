@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/mock_daymark_data.dart';
-import '../../../shared/widgets/app_card.dart';
-import '../../../shared/widgets/productivity_ring.dart';
 import '../daily_formatters.dart';
 
 class DailySummaryCard extends StatelessWidget {
@@ -18,42 +16,55 @@ class DailySummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final progress = summary.expectedCredits <= 0 || !showDailyScore
-        ? 0.0
-        : summary.earnedCredits / summary.expectedCredits;
 
-    return AppCard(
-      padding: const EdgeInsets.all(18),
-      child: Row(
-        children: [
-          if (showDailyScore) ...[
-            ProductivityRing(progress: progress),
-            const SizedBox(width: 18),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  showDailyScore
-                      ? '${formatCredit(summary.earnedCredits)} / '
-                            '${formatCredit(summary.expectedCredits)} credits'
-                      : 'Daily score hidden',
-                  style: theme.textTheme.titleLarge,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (showDailyScore)
+          Wrap(
+            crossAxisAlignment: WrapCrossAlignment.end,
+            spacing: 6,
+            children: [
+              Text(
+                formatCredit(summary.earnedCredits),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w800,
+                  height: 1.05,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  '${summary.completedCount} done · '
-                  '${summary.partialCount} partial · '
-                  '${summary.remainingCount} left · '
-                  '${summary.missedOrSkippedCount} missed',
-                  style: theme.textTheme.bodyMedium,
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text(
+                  '/ ${formatCredit(summary.expectedCredits)} credits',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.outline,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                  ),
                 ),
-              ],
+              ),
+            ],
+          )
+        else
+          Text(
+            'Daily score hidden',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
             ),
           ),
-        ],
-      ),
+        const SizedBox(height: 3),
+        Text(
+          '${summary.completedCount} done · '
+          '${summary.partialCount} partial · '
+          '${summary.remainingCount} left',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: theme.colorScheme.outline,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }

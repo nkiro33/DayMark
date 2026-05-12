@@ -14,6 +14,7 @@ class DailyLogDetailsSheet extends StatefulWidget {
     required this.options,
     required this.expectedDurationMinutes,
     required this.isFutureDate,
+    required this.previewCredits,
     required this.onSaveLog,
     required this.onClearLog,
     required this.onPlanActivity,
@@ -24,6 +25,7 @@ class DailyLogDetailsSheet extends StatefulWidget {
   final List<ActivityOption> options;
   final int? expectedDurationMinutes;
   final bool isFutureDate;
+  final double Function(DailyLogRequest request) previewCredits;
   final DailyActivityLog Function(DailyLogRequest request) onSaveLog;
   final VoidCallback onClearLog;
   final VoidCallback onPlanActivity;
@@ -63,10 +65,16 @@ class _DailyLogDetailsSheetState extends State<DailyLogDetailsSheet> {
     _quantityController = TextEditingController(
       text: _draftValue == null ? '' : formatCredit(_draftValue!),
     );
+    _durationHoursController.addListener(_refreshDraftFromText);
+    _durationMinutesController.addListener(_refreshDraftFromText);
+    _quantityController.addListener(_refreshDraftFromText);
   }
 
   @override
   void dispose() {
+    _durationHoursController.removeListener(_refreshDraftFromText);
+    _durationMinutesController.removeListener(_refreshDraftFromText);
+    _quantityController.removeListener(_refreshDraftFromText);
     _noteController.dispose();
     _durationHoursController.dispose();
     _durationMinutesController.dispose();
@@ -78,7 +86,10 @@ class _DailyLogDetailsSheetState extends State<DailyLogDetailsSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final activity = widget.entry.activity;
-    final status = widget.isFutureDate ? DailyLogStatus.planned : _draftStatus;
+    final status = widget.isFutureDate
+        ? DailyLogStatus.planned
+        : _statusForDisplay;
+    final draftCredits = _draftCredits;
 
     return SafeArea(
       child: Padding(
@@ -95,7 +106,7 @@ class _DailyLogDetailsSheetState extends State<DailyLogDetailsSheet> {
             const SizedBox(height: 4),
             Text(
               '${widget.category.name} · ${statusLabel(status)} · '
-              '${creditsLabel(_log, widget.isFutureDate)}',
+              '${formatCredit(draftCredits)} credits',
               style: theme.textTheme.bodyMedium,
             ),
             if (activity.description != null) ...[
@@ -216,6 +227,65 @@ class _DailyLogDetailsSheetState extends State<DailyLogDetailsSheet> {
         },
       ),
     };
+  }
+
+  double get _draftCredits {
+    if (widget.isFutureDate) {
+      return 0;
+    }
+    final request = _previewRequest();
+    return request == null ? 0 : widget.previewCredits(request);
+  }
+
+  DailyLogStatus get _statusForDisplay {
+    final request = _previewRequest();
+    return request?.status ?? _draftStatus;
+  }
+
+  DailyLogRequest? _previewRequest() {
+    final activity = widget.entry.activity;
+    return switch (activity.trackingType) {
+      TrackingType.duration => _durationPreviewRequest(),
+      TrackingType.quantity => _quantityPreviewRequest(),
+      _ => DailyLogRequest(
+        status: _draftStatus,
+        value: _draftValue,
+        notes: _cleanNote,
+      ),
+    };
+  }
+
+  DailyLogRequest? _durationPreviewRequest() {
+    final hours = int.tryParse(_durationHoursController.text.trim()) ?? 0;
+    final minutes = int.tryParse(_durationMinutesController.text.trim()) ?? 0;
+    final totalMinutes = hours * 60 + minutes;
+    if (minutes < 0 || minutes > 59 || totalMinutes <= 0) {
+      return const DailyLogRequest(status: DailyLogStatus.planned);
+    }
+    return DailyLogRequest(
+      status: _statusForDuration(totalMinutes),
+      durationMinutes: totalMinutes,
+      notes: _cleanNote,
+    );
+  }
+
+  DailyLogRequest? _quantityPreviewRequest() {
+    final value = double.tryParse(_quantityController.text.trim());
+    if (value == null || value <= 0) {
+      return const DailyLogRequest(status: DailyLogStatus.planned);
+    }
+    return DailyLogRequest(
+      status: DailyLogStatus.completed,
+      value: value,
+      notes: _cleanNote,
+    );
+  }
+
+  void _refreshDraftFromText() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
   }
 
   void _setBooleanStatus(DailyLogStatus status, double? value) {

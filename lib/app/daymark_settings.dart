@@ -5,7 +5,7 @@ enum DaymarkThemePreference { system, light, dark }
 enum WeekStartPreference { saturday, sunday, monday }
 
 class DaymarkSettings extends ChangeNotifier {
-  DaymarkThemePreference _themePreference = DaymarkThemePreference.system;
+  DaymarkThemePreference _themePreference = DaymarkThemePreference.dark;
   WeekStartPreference _weekStartPreference = WeekStartPreference.monday;
   bool _dailyReminderEnabled = false;
   TimeOfDay _dailyReminderTime = const TimeOfDay(hour: 21, minute: 0);

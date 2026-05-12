@@ -10,6 +10,7 @@ import 'daily_log_request.dart';
 import 'widgets/add_or_log_activity_sheet.dart';
 import 'widgets/activity_form_sheet.dart';
 import 'widgets/daily_activity_card.dart';
+import 'widgets/daily_calendar_sheet.dart';
 import 'widgets/daily_empty_state.dart';
 import 'widgets/daily_filter_chips.dart';
 import 'widgets/daily_header.dart';
@@ -59,14 +60,15 @@ class _DailyScreenState extends State<DailyScreen> {
         onOpenCalendar: _openCalendar,
         onPrimaryAction: _showPrimaryActionSheet,
       ),
+      floatingActionButton: FloatingActionButton(
+        key: const ValueKey('daily-primary-action'),
+        onPressed: _showPrimaryActionSheet,
+        tooltip: isFutureDate ? 'Add activity' : 'Log activity',
+        child: const Icon(Icons.add, size: 34),
+      ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 104),
         children: [
-          DailySummaryCard(
-            summary: summary,
-            showDailyScore: _settings.showDailyScore,
-          ),
-          const SizedBox(height: 16),
           HorizontalDaySelector(
             today: _data.today,
             selectedDate: _selectedDate,
@@ -78,9 +80,21 @@ class _DailyScreenState extends State<DailyScreen> {
             },
           ),
           const SizedBox(height: 16),
-          SleepInputCard(
-            sleepMinutes: checkIn?.sleepMinutes,
-            onTap: _showSleepSheet,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: DailySummaryCard(
+                  summary: summary,
+                  showDailyScore: _settings.showDailyScore,
+                ),
+              ),
+              const SizedBox(width: 12),
+              SleepInputCard(
+                sleepMinutes: checkIn?.sleepMinutes,
+                onTap: _showSleepSheet,
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           DailyFilterChips(
@@ -108,7 +122,7 @@ class _DailyScreenState extends State<DailyScreen> {
                 onLogAction: _logActivityEntry,
                 onReview: () => _showActivityDetails(entry),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
             ],
         ],
       ),
@@ -173,11 +187,17 @@ class _DailyScreenState extends State<DailyScreen> {
   }
 
   Future<void> _openCalendar() async {
-    final pickedDate = await showDatePicker(
+    final pickedDate = await showModalBottomSheet<DateTime>(
       context: context,
-      initialDate: _selectedDate,
-      firstDate: _data.today.subtract(const Duration(days: 365)),
-      lastDate: _data.today.add(const Duration(days: 365)),
+      showDragHandle: true,
+      builder: (context) {
+        return DailyCalendarSheet(
+          initialDate: _selectedDate,
+          firstDate: _data.today.subtract(const Duration(days: 365)),
+          lastDate: _data.today.add(const Duration(days: 365)),
+          summaryForDate: _data.getDailySummary,
+        );
+      },
     );
     if (pickedDate == null) {
       return;
@@ -427,6 +447,12 @@ class _DailyScreenState extends State<DailyScreen> {
             entry.activity.id,
           ),
           isFutureDate: isFutureDate,
+          previewCredits: (request) => _data.calculateCredits(
+            activity: entry.activity,
+            status: request.status,
+            value: request.value,
+            durationMinutes: request.durationMinutes,
+          ),
           onSaveLog: (request) => _saveLog(entry.activity, request),
           onClearLog: () => _removeLog(entry.activity),
           onPlanActivity: () => _planActivity(entry.activity),

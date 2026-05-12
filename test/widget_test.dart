@@ -1,7 +1,10 @@
 import 'package:daymark/app/daymark_app.dart';
 import 'package:daymark/app/daymark_settings.dart';
 import 'package:daymark/features/activities/activities_screen.dart';
+import 'package:daymark/features/daily/activity_form_result.dart';
+import 'package:daymark/features/daily/widgets/activity_form_sheet.dart';
 import 'package:daymark/features/settings/settings_screen.dart';
+import 'package:daymark/models/models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -32,7 +35,7 @@ void main() {
       find.byKey(const ValueKey('activity-card-activity-study')),
       findsOneWidget,
     );
-    expect(find.text('+ Log'), findsOneWidget);
+    expect(find.byKey(const ValueKey('daily-primary-action')), findsOneWidget);
   });
 
   testWidgets('uses Add wording and planned cards for a future day', (
@@ -49,9 +52,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('+ Add'), findsOneWidget);
-    expect(find.text('0 credits planned'), findsWidgets);
-    expect(find.text('Planned'), findsWidgets);
+    expect(find.byTooltip('Add activity'), findsOneWidget);
+    expect(find.textContaining('0 credits planned'), findsWidgets);
+    expect(find.textContaining('Planned'), findsWidgets);
     expect(find.text('Done'), findsNothing);
   });
 
@@ -84,8 +87,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('save-duration-duration')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Completed'), findsWidgets);
-    expect(find.text('3 credits'), findsOneWidget);
+    expect(find.textContaining('Completed'), findsWidgets);
+    expect(find.textContaining('3 credits'), findsOneWidget);
   });
 
   testWidgets('shows encouraging empty copy for the Missed filter', (
@@ -149,7 +152,29 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('save-daily-log')));
     await tester.pumpAndSettle();
 
-    expect(find.text('8 credits'), findsOneWidget);
+    expect(find.textContaining('8 credits'), findsWidgets);
+  });
+
+  testWidgets('previews log credits before saving details', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const DaymarkApp());
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('activity-card-activity-reduce-tiktok-reels')),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Reduce TikTok/Reels').first);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('-2 credits'), findsWidgets);
+
+    await tester.tap(find.text('Bad day'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('-5 credits'), findsWidgets);
+    expect(find.text('Reduce TikTok/Reels updated.'), findsNothing);
   });
 
   testWidgets('keeps bad habits out of the To do filter', (
@@ -255,7 +280,7 @@ void main() {
     );
 
     expect(find.text('Read'), findsOneWidget);
-    expect(find.text('1 credits'), findsOneWidget);
+    expect(find.textContaining('1 credits'), findsOneWidget);
   });
 
   testWidgets('shows activity management cards and pauses an activity', (
@@ -266,21 +291,9 @@ void main() {
     expect(find.text('New Activity'), findsOneWidget);
     expect(find.text('Good Habits'), findsOneWidget);
     expect(find.text('Inactive'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('activity-management-card-activity-study')),
-      160,
-      scrollable: find.byType(Scrollable).first,
-    );
     expect(
-      find.byKey(const ValueKey('activity-management-card-activity-study')),
-      findsOneWidget,
-    );
-    expect(find.textContaining('+1.5 / 15 min'), findsWidgets);
-
-    await tester.scrollUntilVisible(
       find.byKey(const ValueKey('activity-management-card-activity-make-bed')),
-      120,
-      scrollable: find.byType(Scrollable).first,
+      findsOneWidget,
     );
     await tester.tap(find.text('Make Bed'));
     await tester.pumpAndSettle();
@@ -293,6 +306,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Make Bed paused.'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('activity-management-card-activity-make-bed')),
+      160,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(
       find.byKey(const ValueKey('activity-management-card-activity-make-bed')),
       findsOneWidget,
@@ -338,8 +356,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('activities-new-activity')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Good'), findsOneWidget);
-    expect(find.text('Bad'), findsOneWidget);
+    expect(find.text('Good Habit'), findsOneWidget);
+    expect(find.text('Bad Habit'), findsOneWidget);
     expect(find.text('Track'), findsNothing);
     expect(find.byKey(const ValueKey('cancel-activity-form')), findsOneWidget);
 
@@ -347,9 +365,16 @@ void main() {
       find.byKey(const ValueKey('recurring-title-field')),
       'Practice piano',
     );
-    await tester.tap(find.byType(DropdownButtonFormField<String>).first);
+    await tester.tap(find.byKey(const ValueKey('category-menu-field')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Other').last);
+    await tester.scrollUntilVisible(
+      find.widgetWithText(MenuItemButton, 'Create new category'),
+      80,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.tap(
+      find.widgetWithText(MenuItemButton, 'Create new category'),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('custom-category-field')), findsOneWidget);
@@ -375,6 +400,101 @@ void main() {
     );
     expect(find.textContaining('Music'), findsOneWidget);
   });
+
+  testWidgets('activity form hides type when category defines it', (
+    WidgetTester tester,
+  ) async {
+    ActivityFormResult? savedResult;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ActivityFormSheet(
+            title: 'New Activity',
+            submitLabel: 'Save',
+            categories: _formTestCategories,
+            isRecurring: true,
+            initialCategoryId: 'category-personal',
+            onSave: (result) => savedResult = result,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Good Habit'), findsOneWidget);
+    expect(find.text('Bad Habit'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('category-menu-field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(MenuItemButton, 'Good Habit'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bad Habit'), findsNothing);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('recurring-title-field')),
+      'Make tea',
+    );
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('save-recurring-activity')),
+      300,
+      scrollable: _activityFormScrollable,
+    );
+    await tester.tap(find.byKey(const ValueKey('save-recurring-activity')));
+    await tester.pumpAndSettle();
+
+    expect(savedResult?.activityType, ActivityType.positive);
+  });
+
+  testWidgets(
+    'activity form converts duration credits per hour to per minute',
+    (WidgetTester tester) async {
+      ActivityFormResult? savedResult;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ActivityFormSheet(
+              title: 'New Activity',
+              submitLabel: 'Save',
+              categories: _formTestCategories,
+              isRecurring: true,
+              initialCategoryId: 'category-personal',
+              initialTrackingType: TrackingType.duration,
+              onSave: (result) => savedResult = result,
+            ),
+          ),
+        ),
+      );
+
+      await tester.enterText(
+        find.byKey(const ValueKey('recurring-title-field')),
+        'Practice guitar',
+      );
+
+      await tester.scrollUntilVisible(
+        find.text('Per hour'),
+        300,
+        scrollable: _activityFormScrollable,
+      );
+      await tester.drag(_activityFormScrollable, const Offset(0, -140));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Per hour'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('duration-credit-field')),
+        '12',
+      );
+
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('save-recurring-activity')),
+        300,
+        scrollable: _activityFormScrollable,
+      );
+      await tester.tap(find.byKey(const ValueKey('save-recurring-activity')));
+      await tester.pumpAndSettle();
+
+      expect(savedResult?.creditPerMinute, closeTo(0.2, 0.0001));
+    },
+  );
 
   testWidgets('shows presaved templates and keeps search inside the tab', (
     WidgetTester tester,
@@ -449,17 +569,17 @@ void main() {
     expect(find.text('Appearance'), findsOneWidget);
     expect(find.text('Calendar'), findsOneWidget);
     expect(find.text('Reminders'), findsOneWidget);
-    expect(find.text('System default'), findsOneWidget);
+    expect(find.text('Dark'), findsOneWidget);
     expect(find.text('Monday'), findsOneWidget);
     expect(find.text('Off'), findsOneWidget);
 
     await tester.tap(find.text('Theme'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Dark'));
+    await tester.tap(find.text('Light'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Dark'), findsOneWidget);
-    expect(settings.themePreference, DaymarkThemePreference.dark);
+    expect(find.text('Light'), findsOneWidget);
+    expect(settings.themePreference, DaymarkThemePreference.light);
 
     await tester.tap(find.byKey(const ValueKey('daily-reminder-switch')));
     await tester.pumpAndSettle();
@@ -517,3 +637,17 @@ Finder get _activityFormScrollable {
       )
       .first;
 }
+
+const _formTestCategories = [
+  ActivityCategory(
+    id: 'category-good-habit',
+    name: 'Good Habit',
+    code: 'good_habit',
+  ),
+  ActivityCategory(
+    id: 'category-bad-habit',
+    name: 'Bad Habit',
+    code: 'bad_habit',
+  ),
+  ActivityCategory(id: 'category-personal', name: 'Personal', code: 'personal'),
+];

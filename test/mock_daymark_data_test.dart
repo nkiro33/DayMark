@@ -27,6 +27,12 @@ void main() {
       expect(data.schedules, hasLength(data.activities.length));
       expect(data.creditRules, hasLength(data.activities.length));
       expect(data.dailyCheckIns.single.sleepMinutes, 450);
+      expect(data.userProfile.dailyCreditGoal, 45);
+      expect(
+        data.activities.every((activity) => activity.sortOrder > 0),
+        isTrue,
+      );
+      expect(data.presavedTemplates.first.title, 'Work');
     });
 
     test('creates user activities from presaved template defaults', () {
@@ -41,6 +47,7 @@ void main() {
       expect(activity.title, 'Drink Water');
       expect(activity.isActive, isTrue);
       expect(activity.categoryId, 'category-health');
+      expect(activity.sortOrder, template.sortOrder);
       expect(schedule?.frequency, ScheduleFrequency.daily);
       expect(creditRule?.creditPerUnit, 0.5);
       expect(creditRule?.maxDailyCredit, 4);
@@ -87,7 +94,7 @@ void main() {
       final summary = data.getDailySummary(today);
 
       expect(summary.earnedCredits, greaterThan(0));
-      expect(summary.expectedCredits, greaterThan(0));
+      expect(summary.expectedCredits, data.userProfile.dailyCreditGoal);
       expect(summary.completedCount, 3);
       expect(summary.partialCount, 1);
       expect(summary.missedOrSkippedCount, 0);
@@ -106,6 +113,7 @@ void main() {
 
       expect(log.creditsEarned, 3);
       expect(log.status, DailyLogStatus.partiallyCompleted);
+      expect(log.sortOrder, 130);
       expect(after.earnedCredits, before.earnedCredits + 3);
       expect(after.partialCount, before.partialCount + 1);
     });

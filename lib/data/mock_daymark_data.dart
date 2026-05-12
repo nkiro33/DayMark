@@ -38,6 +38,7 @@ class MockDaymarkData {
       displayName: 'Daymark User',
       timezone: 'local',
       onboardingCompleted: true,
+      dailyCreditGoal: 45,
       createdAt: now,
       updatedAt: now,
     );
@@ -86,7 +87,8 @@ class MockDaymarkData {
       ),
     ];
 
-    presavedTemplates = appPresavedActivityTemplates;
+    presavedTemplates = [...appPresavedActivityTemplates]
+      ..sort(_comparePresavedTemplates);
 
     activities = [
       ActivityTemplate(
@@ -98,6 +100,7 @@ class MockDaymarkData {
         activityType: ActivityType.positive,
         trackingType: TrackingType.boolean,
         activityScope: ActivityScope.recurring,
+        sortOrder: 100,
         createdAt: now,
         updatedAt: now,
       ),
@@ -110,6 +113,7 @@ class MockDaymarkData {
         activityType: ActivityType.positive,
         trackingType: TrackingType.duration,
         activityScope: ActivityScope.recurring,
+        sortOrder: 120,
         createdAt: now,
         updatedAt: now,
       ),
@@ -122,6 +126,7 @@ class MockDaymarkData {
         activityType: ActivityType.positive,
         trackingType: TrackingType.duration,
         activityScope: ActivityScope.manual,
+        sortOrder: 220,
         createdAt: now,
         updatedAt: now,
       ),
@@ -134,6 +139,7 @@ class MockDaymarkData {
         activityType: ActivityType.negative,
         trackingType: TrackingType.level,
         activityScope: ActivityScope.recurring,
+        sortOrder: 140,
         createdAt: now,
         updatedAt: now,
       ),
@@ -146,6 +152,7 @@ class MockDaymarkData {
         activityType: ActivityType.positive,
         trackingType: TrackingType.duration,
         activityScope: ActivityScope.recurring,
+        sortOrder: 130,
         createdAt: now,
         updatedAt: now,
       ),
@@ -385,7 +392,7 @@ class MockDaymarkData {
       }
     }
 
-    return entries;
+    return entries..sort(_compareDailyEntries);
   }
 
   DailySummary getDailySummary(DateTime date) {
@@ -394,10 +401,7 @@ class MockDaymarkData {
 
     return DailySummary(
       earnedCredits: logs.fold(0, (sum, log) => sum + log.creditsEarned),
-      expectedCredits: entries.fold(
-        0,
-        (sum, entry) => sum + _expectedCreditsForActivity(entry.activity.id),
-      ),
+      expectedCredits: userProfile.dailyCreditGoal,
       completedCount: logs
           .where((log) => log.status == DailyLogStatus.completed)
           .length,
@@ -422,7 +426,8 @@ class MockDaymarkData {
         .where(
           (activity) => activity.categoryId == category.id && activity.isActive,
         )
-        .toList();
+        .toList()
+      ..sort(_compareActivities);
   }
 
   ActivityCategory categoryForActivity(ActivityTemplate activity) {
@@ -488,7 +493,8 @@ class MockDaymarkData {
               activity.activityScope != ActivityScope.oneTime &&
               !loggedActivityIds.contains(activity.id),
         )
-        .toList();
+        .toList()
+      ..sort(_compareActivities);
   }
 
   DailyActivityLog saveActivityLog({
@@ -498,6 +504,7 @@ class MockDaymarkData {
     double? value,
     int? durationMinutes,
     String? notes,
+    int? sortOrder,
   }) {
     final target = _dateOnly(date);
     final activity = _activityById(activityId);
@@ -539,6 +546,7 @@ class MockDaymarkData {
       value: value,
       durationMinutes: durationMinutes,
       notes: notes,
+      sortOrder: sortOrder ?? existing?.sortOrder ?? activity.sortOrder,
       creditsEarned: _isFutureDate(target)
           ? 0
           : calculateCredits(
@@ -609,6 +617,7 @@ class MockDaymarkData {
       activityType: activityType,
       trackingType: trackingType,
       activityScope: ActivityScope.oneTime,
+      sortOrder: _nextSortOrder(),
       createdAt: now,
       updatedAt: now,
     );
@@ -677,6 +686,7 @@ class MockDaymarkData {
           ? ActivityScope.manual
           : ActivityScope.recurring,
       startDate: target,
+      sortOrder: _nextSortOrder(),
       createdAt: now,
       updatedAt: now,
     );
@@ -732,6 +742,7 @@ class MockDaymarkData {
       activityScope: template.activityScope,
       isActive: true,
       startDate: today,
+      sortOrder: template.sortOrder,
       createdAt: now,
       updatedAt: now,
     );
@@ -811,6 +822,7 @@ class MockDaymarkData {
       isActive: existing.isActive,
       startDate: existing.startDate,
       endDate: existing.endDate,
+      sortOrder: existing.sortOrder,
       createdAt: existing.createdAt,
       updatedAt: DateTime.now(),
     );
@@ -865,6 +877,7 @@ class MockDaymarkData {
       isActive: isActive,
       startDate: existing.startDate,
       endDate: existing.endDate,
+      sortOrder: existing.sortOrder,
       createdAt: existing.createdAt,
       updatedAt: DateTime.now(),
     );
@@ -1105,29 +1118,57 @@ class MockDaymarkData {
     }
   }
 
-  double _expectedCreditsForActivity(String activityId) {
-    final rule = _creditRuleForActivity(activityId);
-    if (rule == null) {
-      return 0;
+  int _nextSortOrder() {
+    if (activities.isEmpty) {
+      return 1000;
     }
-    final categoricalCredits = optionsForActivity(
-      activityId,
-    ).map((option) => option.creditValue);
-    if (categoricalCredits.isNotEmpty) {
-      return categoricalCredits.reduce((a, b) => a > b ? a : b);
-    }
-    if (rule.baseCredit > 0) {
-      return rule.baseCredit;
-    }
-    if (rule.maxDailyCredit != null) {
-      return rule.maxDailyCredit!;
-    }
-    return rule.creditPerMinute * 60 + rule.creditPerUnit;
+    final lastOrder = activities
+        .map((activity) => activity.sortOrder)
+        .reduce((a, b) => a > b ? a : b);
+    return lastOrder + 10;
   }
 
   bool _isFutureDate(DateTime date) {
     return date.isAfter(today);
   }
+}
+
+int _compareDailyEntries(DailyActivityEntry a, DailyActivityEntry b) {
+  final orderComparison = _entrySortOrder(a).compareTo(_entrySortOrder(b));
+  if (orderComparison != 0) {
+    return orderComparison;
+  }
+  return a.activity.title.compareTo(b.activity.title);
+}
+
+int _entrySortOrder(DailyActivityEntry entry) {
+  final logOrder = entry.log?.sortOrder;
+  if (logOrder != null && logOrder != 1000) {
+    return logOrder;
+  }
+  return entry.activity.sortOrder;
+}
+
+int _compareActivities(ActivityTemplate a, ActivityTemplate b) {
+  if (a.isActive != b.isActive) {
+    return a.isActive ? -1 : 1;
+  }
+  final orderComparison = a.sortOrder.compareTo(b.sortOrder);
+  if (orderComparison != 0) {
+    return orderComparison;
+  }
+  return a.title.compareTo(b.title);
+}
+
+int _comparePresavedTemplates(
+  PresavedActivityTemplate a,
+  PresavedActivityTemplate b,
+) {
+  final orderComparison = a.sortOrder.compareTo(b.sortOrder);
+  if (orderComparison != 0) {
+    return orderComparison;
+  }
+  return a.title.compareTo(b.title);
 }
 
 DateTime _dateOnly(DateTime value) {

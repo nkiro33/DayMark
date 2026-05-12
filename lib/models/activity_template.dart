@@ -13,6 +13,7 @@ class ActivityTemplate {
     this.isActive = true,
     this.startDate,
     this.endDate,
+    this.sortOrder = 1000,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -28,6 +29,7 @@ class ActivityTemplate {
   final bool isActive;
   final DateTime? startDate;
   final DateTime? endDate;
+  final int sortOrder;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -44,6 +46,7 @@ class ActivityTemplate {
       'is_active': isActive,
       'start_date': startDate?.toIso8601String(),
       'end_date': endDate?.toIso8601String(),
+      'sort_order': sortOrder,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -71,6 +74,7 @@ class ActivityTemplate {
       isActive: json['is_active']! as bool,
       startDate: _parseOptionalDate(json['start_date']),
       endDate: _parseOptionalDate(json['end_date']),
+      sortOrder: (json['sort_order'] as num?)?.toInt() ?? 1000,
       createdAt: DateTime.parse(json['created_at']! as String),
       updatedAt: DateTime.parse(json['updated_at']! as String),
     );
